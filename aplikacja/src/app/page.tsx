@@ -1,410 +1,312 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import { createClient } from '../utils/supabase/client'
 
-interface Profile {
-  id: string
-  username: string
-  total_points: number
-  role: string
+// Komponent wyświetlający piękną grafikę flagi z zewnętrznego serwera FlagCDN (odporny na Windowsa!)
+const TeamFlag = ({ teamName }: { teamName: string }) => {
+  const flags: Record<string, string> = {
+    'Poland': 'pl', 'Argentina': 'ar', 'Brazil': 'br', 'France': 'fr', 'Germany': 'de',
+    'Spain': 'es', 'England': 'gb-eng', 'Portugal': 'pt', 'Netherlands': 'nl', 'Italy': 'it',
+    'Belgium': 'be', 'Croatia': 'hr', 'Uruguay': 'uy', 'Mexico': 'mx', 'United States': 'us',
+    'Canada': 'ca', 'Morocco': 'ma', 'Senegal': 'sn', 'Japan': 'jp', 'South Korea': 'kr',
+    'Australia': 'au', 'Ukraine': 'ua', 'Colombia': 'co', 'Ecuador': 'ec', 'Switzerland': 'ch',
+    'Denmark': 'dk', 'Ghana': 'gh', 'Cameroon': 'cm', 'South Africa': 'za', 'Czechia': 'cz',
+    'Bosnia-Herzegovina': 'ba', 'Paraguay': 'py', 'Qatar': 'qa', 'Serbia': 'rs', 'Chile': 'cl',
+    'Peru': 'pe', 'Venezuela': 've', 'Nigeria': 'ng', 'Algeria': 'dz', 'Egypt': 'eg',
+    'Mali': 'ml', 'Ivory Coast': 'ci', 'Jamaica': 'jm', 'Panama': 'pa', 'New Zealand': 'nz'
+  }
+
+  const code = flags[teamName]
+
+  if (!code) return <span className="mx-2 text-xl">🏳️</span>
+
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${code}.png`}
+      srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
+      width="28"
+      alt={`Flaga ${teamName}`}
+      className="inline-block mx-2 rounded shadow-sm border border-gray-700"
+    />
+  )
 }
 
 interface Match {
   id: number
-  api_fixture_id: number | null
+  api_fixture_id: number
   team_a: string
-  team_a_flag: string
   team_b: string
-  team_b_flag: string
   start_time: string
+  status: string
   score_a: number | null
   score_b: number | null
-  status: string
 }
 
-interface League {
-  id: number
-  name: string
-  invite_code: string
-  admin_id: string
+interface Prediction {
+  match_id: number
+  pred_a: number
+  pred_b: number
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [ranking, setRanking] = useState<Profile[]>([])
-  const [matches, setMatches] = useState<Match[]>([])
-  const [userPredictions, setUserPredictions] = useState<{[key: number]: { pred_a: string; pred_b: string } }>({})
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leagues' | 'ranking' | 'admin'>('dashboard')
-  const [loading, setLoading] = useState(true)
-  
-  // Stan dla prywatnych lig
-  const [myLeagues, setMyLeagues] = useState<League[]>([])
-  const [selectedLeague, setSelectedLeague] = useState<League | null>(null)
-  const [leagueRanking, setLeagueRanking] = useState<Profile[]>([])
-  const [newLeagueName, setNewLeagueName] = useState('')
-  const [joinCode, setJoinCode] = useState('')
-
-  // Stan dla nowego meczu (Admin)
-  const [newTeamA, setNewTeamA] = useState('')
-  const [newTeamAFlag, setNewTeamAFlag] = useState('🏳️')
-  const [newTeamB, setNewTeamB] = useState('')
-  const [newTeamBFlag, setNewTeamBFlag] = useState('🏳️')
-  const [newStartTime, setNewStartTime] = useState('')
-
   const router = useRouter()
   const supabase = createClient()
 
-  // Ładowanie wszystkich danych z bazy na start
-  const loadAppData = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
-      return
-    }
-    setUser(user)
-
-    // 1. Profil zalogowanego
-    const { data: profData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-    if (profData) setProfile(profData)
-
-    // 2. Ranking globalny
-    const { data: rankData } = await supabase.from('profiles').select('*').order('total_points', { ascending: false })
-    if (rankData) setRanking(rankData)
-
-    // 3. Mecze
-    const { data: matchData } = await supabase.from('matches').select('*').order('start_time', { ascending: true })
-    if (matchData) setMatches(matchData)
-
-    // 4. Typy zalogowanego użytkownika
-    const { data: predData } = await supabase.from('predictions').select('*').eq('user_id', user.id)
-    if (predData) {
-      const predMap: any = {}
-      predData.forEach(p => {
-        predMap[p.match_id] = { pred_a: p.pred_a.toString(), pred_b: p.pred_b.toString() }
-      })
-      setUserPredictions(predMap)
-    }
-
-    // 5. Prywatne ligi użytkownika
-    const { data: memberLeagues } = await supabase.from('league_members').select('league_id').eq('user_id', user.id)
-    if (memberLeagues && memberLeagues.length > 0) {
-      const leagueIds = memberLeagues.map(l => l.league_id)
-      const { data: leaguesData } = await supabase.from('leagues').select('*').in('id', leagueIds)
-      if (leaguesData) setMyLeagues(leaguesData)
-    }
-
-    setLoading(false)
-  }
+  const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [matches, setMatches] = useState<Match[]>([])
+  const [predictions, setPredictions] = useState<Record<number, { predA: string; predB: string }>>({})
+  const [loading, setLoading] = useState(true)
+  const [saveStatus, setSaveStatus] = useState<Record<number, string>>({})
 
   useEffect(() => {
-    loadAppData()
-  }, [router])
+    const fetchData = async () => {
+      try {
+        // 1. Sprawdź zalogowanego użytkownika
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          window.location.href = '/login'
+          return
+        }
+        setUser(user)
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
+        // 2. Pobierz profil gracza (nick i punkty)
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        setProfile(profileData)
 
-  // ZMIANA INPUTÓW TYPOWANIA W TABELI
-  const handlePredictionChange = (matchId: number, team: 'a' | 'b', value: string) => {
-    setUserPredictions(prev => ({
+        // 3. Pobierz wszystkie 104 mecze z terminarza
+        const { data: matchesData } = await supabase
+          .from('matches')
+          .select('*')
+          .order('start_time', { ascending: true })
+        setMatches(matchesData || [])
+
+        // 4. Pobierz dotychczasowe typy gracza, żeby uzupełnić formularze
+        const { data: predsData } = await supabase
+          .from('predictions')
+          .select('*')
+          .eq('user_id', user.id)
+
+        const predsMap: Record<number, { predA: string; predB: string }> = {}
+        predsData?.forEach((p: any) => {
+          predsMap[p.match_id] = {
+            predA: p.pred_a.toString(),
+            predB: p.pred_b.toString()
+          }
+        })
+        setPredictions(predsMap)
+
+      } catch (err) {
+        console.error('Błąd ładowania danych:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  // Obsługa zmiany wartości w okienkach wyniku
+  const handleInputChange = (matchId: number, team: 'A' | 'B', value: string) => {
+    // Pozwalamy wpisywać tylko cyfry
+    if (value !== '' && !/^\d+$/.test(value)) return
+
+    setPredictions(prev => ({
       ...prev,
       [matchId]: {
         ...prev[matchId],
-        [team === 'a' ? 'pred_a' : 'pred_b']: value
+        [team === 'A' ? 'predA' : 'predB']: value
       }
     }))
   }
 
-  // ZAPISYWANIE TYPU DO BAZY
-  const savePrediction = async (matchId: number, startTime: string) => {
-    if (new Date() >= new Date(startTime)) {
-      alert('Za późno! Mecz już się rozpoczął.')
+  // Funkcja wysyłająca typ gracza do bazy danych
+  const handleSavePrediction = async (matchId: number) => {
+    const typ = predictions[matchId]
+    if (!typ || typ.predA === '' || typ.predB === '') {
+      setSaveStatus(prev => ({ ...prev, [matchId]: 'Wpisz oba wyniki!' }))
       return
     }
 
-    const matchPred = userPredictions[matchId]
-    if (!matchPred || matchPred.pred_a === '' || matchPred.pred_b === '') {
-      alert('Wpisz poprawny wynik przed zapisem!')
-      return
-    }
+    setSaveStatus(prev => ({ ...prev, [matchId]: 'Zapisywanie...' }))
 
-    const { error } = await supabase.from('predictions').upsert({
-      user_id: user.id,
-      match_id: matchId,
-      pred_a: parseInt(matchPred.pred_a),
-      pred_b: parseInt(matchPred.pred_b)
-    }, { onConflict: 'user_id,match_id' })
+    try {
+      // Sprawdzamy czy typ na ten mecz już istnieje w bazie
+      const { data: existing } = await supabase
+        .from('predictions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('match_id', matchId)
+        .single()
 
-    if (error) alert('Błąd zapisu: ' + error.message)
-    else alert('Typ zapisany pomyślnie!')
-  }
+      if (existing) {
+        // Aktualizacja istniejącego typu
+        await supabase
+          .from('predictions')
+          .update({
+            pred_a: parseInt(typ.predA),
+            pred_b: parseInt(typ.predB)
+          })
+          .eq('id', existing.id)
+      } else {
+        // Wstawienie nowego typu
+        await supabase
+          .from('predictions')
+          .insert({
+            user_id: user.id,
+            match_id: matchId,
+            pred_a: parseInt(typ.predA),
+            pred_b: parseInt(typ.predB)
+          })
+      }
 
-  // TWORZENIE PRYWATNEJ LIGI
-  const createLeague = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const code = Math.random().toString(36).substring(2, 7).toUpperCase() // Generuje kod np. XF49B
-    
-    const { data: newLeague, error } = await supabase.from('leagues').insert([
-      { name: newLeagueName, invite_code: code, admin_id: user.id }
-    ]).select().single()
+      setSaveStatus(prev => ({ ...prev, [matchId]: 'Zapisano! ✅' }))
+      setTimeout(() => {
+        setSaveStatus(prev => ({ ...prev, [matchId]: '' }))
+      }, 2000)
 
-    if (error) {
-      alert('Błąd tworzenia ligi: ' + error.message)
-      return
-    }
-
-    // Dodaj założyciela automatycznie jako członka grupy
-    await supabase.from('league_members').insert([{ league_id: newLeague.id, user_id: user.id }])
-    alert(`Liga utworzona! Kod zaproszenia dla znajomych: ${code}`)
-    setNewLeagueName('')
-    loadAppData()
-  }
-
-  // DOŁĄCZANIE DO PRYWATNEJ LIGI
-  const joinLeague = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const { data: league, error } = await supabase.from('leagues').select('*').eq('invite_code', joinCode.toUpperCase()).single()
-
-    if (error || !league) {
-      alert('Nie znaleziono ligi o takim kodzie!')
-      return
-    }
-
-    const { error: joinError } = await supabase.from('league_members').insert([
-      { league_id: league.id, user_id: user.id }
-    ])
-
-    if (joinError) alert('Jesteś już członkiem tej ligi!')
-    else {
-      alert(`Dołączyłeś do grupy: ${league.name}`)
-      setJoinCode('')
-      loadAppData()
+    } catch (err) {
+      setSaveStatus(prev => ({ ...prev, [matchId]: 'Błąd zapisu ❌' }))
     }
   }
 
-  // ŁADOWANIE RANKINGU DLA WYBRANEJ PRYWATNEJ LIGI
-  const viewLeagueRanking = async (league: League) => {
-    setSelectedLeague(league)
-    const { data: members } = await supabase.from('league_members').select('user_id').eq('league_id', league.id)
-    if (members) {
-      const userIds = members.map(m => m.user_id)
-      const { data: profilesData } = await supabase.from('profiles').select('*').in('id', userIds).order('total_points', { ascending: false })
-      if (profilesData) setLeagueRanking(profilesData)
-    }
+  // Wylogowanie
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/login'
   }
 
-  // FUNKCJA ADMINA: DODAWANIE MECZU
-  const handleCreateMatch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    await supabase.from('matches').insert([
-      { team_a: newTeamA, team_a_flag: newTeamAFlag, team_b: newTeamB, team_b_flag: newTeamBFlag, start_time: new Date(newStartTime).toISOString() }
-    ])
-    alert('Mecz dodany!')
-    window.location.reload()
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1a2332] text-white">
+        <div className="text-xl font-semibold animate-pulse text-green-500">Ładowanie terminarza rozgrywek...</div>
+      </div>
+    )
   }
-
-  // CZYSZCZENIE DANYCH (FUNKCJE CZYSZCZĄCE DLA ADMINA)
-  const adminClearData = async (type: 'matches' | 'test_users' | 'predictions') => {
-    if (!confirm('Czy na pewno chcesz nieodwracalnie USUNĄĆ te dane z bazy?')) return
-
-    if (type === 'matches') {
-      await supabase.from('matches').delete().neq('id', 0)
-      alert('Wszystkie mecze zostały usunięte z bazy.');
-    } else if (type === 'predictions') {
-      await supabase.from('predictions').delete().neq('id', 0)
-      alert('Wszystkie typy użytkowników zostały wyczyszczone.');
-    } else if (type === 'test_users') {
-      await supabase.from('profiles').delete().ilike('username', '%test%')
-      alert('Usunięto z bazy profile zawierające frazę "test" w nazwie.');
-    }
-    window.location.reload()
-  }
-
-  if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-900 text-white font-bold text-xl">Ładowanie systemu Typera...</div>
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white font-sans">
-      {/* NAGŁÓWEK */}
-      <header className="bg-slate-800 border-b border-slate-700 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">⚽</span>
-          <h1 className="text-2xl font-black tracking-wider text-emerald-400">VAR-uj Wynik 2026</h1>
+    <div className="min-h-screen bg-[#1a2332] text-white p-4 md:p-8">
+      
+      {/* NAGŁÓWEK DASHBOARDU */}
+      <div className="max-w-6xl mx-auto bg-[#222e43] rounded-xl p-6 mb-8 border border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
+        <div>
+          <h1 className="text-3xl font-extrabold text-green-500 tracking-wider">TYPER MISTRZOSTW ŚWIATA 2026</h1>
+          <p className="text-gray-400 mt-1">
+            Zalogowany jako: <span className="text-white font-bold">{profile?.username || 'Gracz'}</span>
+          </p>
         </div>
         <div className="flex items-center gap-6">
-          <div className="text-right">
-            <p className="text-sm text-slate-400">Gracz: <span className="font-bold text-white">{profile?.username}</span></p>
-            <p className="text-xs text-emerald-400 font-bold">Punkty: {profile?.total_points} pkt</p>
+          <div className="text-center bg-[#1a2332] px-6 py-3 rounded-lg border border-gray-600">
+            <span className="block text-xs uppercase text-gray-400 font-semibold tracking-wider">Twoje Punkty</span>
+            <span className="text-2xl font-black text-green-400">{profile?.total_points ?? 0} pkt</span>
           </div>
-          <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-xs font-bold transition-colors">Wyloguj</button>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600/20 border border-red-600 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-all text-sm font-medium"
+          >
+            Wyloguj
+          </button>
         </div>
-      </header>
+      </div>
 
-      {/* TAbY NAWIGACJI */}
-      <nav className="flex justify-center bg-slate-800/50 border-b border-slate-800 p-2 gap-2">
-        <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'dashboard' ? 'bg-emerald-500 text-white' : 'text-slate-400 hover:text-white'}`}>📋 Mecze i Typy</button>
-        <button onClick={() => setActiveTab('leagues')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'leagues' ? 'bg-emerald-500 text-white' : 'text-slate-400 hover:text-white'}`}>👥 Mała Rywalizacja</button>
-        <button onClick={() => setActiveTab('ranking')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'ranking' ? 'bg-emerald-500 text-white' : 'text-slate-400 hover:text-white'}`}>🏆 Ranking Globalny</button>
-        {profile?.role === 'admin' && (
-          <button onClick={() => setActiveTab('admin')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'admin' ? 'bg-amber-500 text-slate-900' : 'text-amber-400 hover:bg-amber-500/10'}`}>🛡️ Panel Admina</button>
-        )}
-      </nav>
-
-      {/* ZAWARTOŚĆ APP */}
-      <main className="max-w-6xl mx-auto p-6">
+      {/* LISTA MECZÓW DO TYPOWANIA */}
+      <div className="max-w-6xl mx-auto">
+        <h2 className="text-xl font-bold mb-6 text-gray-300 border-l-4 border-green-500 pl-3">Terminarz i Twoje Typy</h2>
         
-        {/* TAB 1: MECZE I TYPY */}
-        {activeTab === 'dashboard' && (
-          <div className="grid gap-4 md:grid-cols-2">
-            {matches.map((match) => {
-              const isLocked = new Date() >= new Date(match.start_time);
-              const currentPred = userPredictions[match.id] || { pred_a: '', pred_b: '' };
-              return (
-                <div key={match.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col justify-between gap-4 shadow-lg">
-                  <div className="flex justify-between items-center text-xs text-slate-400">
-                    <span>📅 {new Date(match.start_time).toLocaleString('pl-PL')}</span>
-                    {isLocked ? <span className="text-red-400 font-bold">🔒 Zablokowane</span> : <span className="text-emerald-400 font-bold">⏳ Otwarte do gwizdka</span>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {matches.map(match => {
+            const isFinished = match.status === 'finished'
+            const formattedDate = new Date(match.start_time).toLocaleString('pl-PL', {
+              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            })
+
+            return (
+              <div 
+                key={match.id} 
+                className="bg-[#222e43] border border-gray-700 rounded-xl p-5 shadow-lg flex flex-col justify-between hover:border-gray-600 transition-all"
+              >
+                {/* Górna belka meczu */}
+                <div className="flex justify-between items-center text-xs text-gray-400 mb-4 bg-[#1a2332]/50 p-2 rounded">
+                  <span>📅 {formattedDate}</span>
+                  {isFinished ? (
+                    <span className="text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded">Zakończony</span>
+                  ) : (
+                    <span className="text-green-400 font-bold bg-green-500/10 px-2 py-0.5 rounded">⏳ Otwarte do gwizdka</span>
+                  )}
+                </div>
+
+                {/* Środek: Zespoły i flagi graficzne */}
+                <div className="grid grid-cols-3 items-center text-center my-2">
+                  <div className="flex flex-col items-center gap-2">
+                    <TeamFlag teamName={match.team_a} />
+                    <span className="font-bold text-sm md:text-base tracking-wide truncate max-w-full">{match.team_a}</span>
+                    {isFinished && <span className="text-xl font-black text-gray-300 mt-1">{match.score_a}</span>}
                   </div>
-                  <div className="flex justify-between items-center my-1">
-                    <div className="flex items-center gap-2 w-1/3 justify-end font-semibold text-sm">
-                      <span>{match.team_a}</span><span className="text-xl">{match.team_a_flag}</span>
-                    </div>
-                    <div className="bg-slate-900 px-3 py-1.5 rounded-lg font-black tracking-widest text-emerald-400 border border-slate-700 text-center text-sm">
-                      {match.score_a !== null ? `${match.score_a}:${match.score_b}` : 'VS'}
-                    </div>
-                    <div className="flex items-center gap-2 w-1/3 justify-start font-semibold text-sm">
-                      <span className="text-xl">{match.team_b_flag}</span><span>{match.team_b}</span>
-                    </div>
+
+                  <div className="flex flex-col items-center">
+                    <span className="bg-[#1a2332] text-xs font-bold px-3 py-1.5 rounded-full border border-gray-700 text-green-500">VS</span>
                   </div>
-                  <div className="border-t border-slate-700/50 pt-3 flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Twój typ na mecz:</span>
-                    <div className="flex items-center gap-1.5">
-                      <input type="number" disabled={isLocked} value={currentPred.pred_a} onChange={(e) => handlePredictionChange(match.id, 'a', e.target.value)} placeholder="-" className="w-10 bg-slate-900 border border-slate-600 rounded text-center py-1 text-xs font-bold disabled:opacity-40" />
-                      <span className="text-slate-500 text-xs">:</span>
-                      <input type="number" disabled={isLocked} value={currentPred.pred_b} onChange={(e) => handlePredictionChange(match.id, 'b', e.target.value)} placeholder="-" className="w-10 bg-slate-900 border border-slate-600 rounded text-center py-1 text-xs font-bold disabled:opacity-40" />
-                      {!isLocked && <button onClick={() => savePrediction(match.id, match.start_time)} className="bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black text-xs px-2.5 py-1 rounded transition-colors ml-2 shadow-sm">Zapisz</button>}
-                    </div>
+
+                  <div className="flex flex-col items-center gap-2">
+                    <TeamFlag teamName={match.team_b} />
+                    <span className="font-bold text-sm md:text-base tracking-wide truncate max-w-full">{match.team_b}</span>
+                    {isFinished && <span className="text-xl font-black text-gray-300 mt-1">{match.score_b}</span>}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
 
-        {/* TAB 2: MAŁA RYWALIZACJA (PRYWATNE GRUPY) */}
-        {activeTab === 'leagues' && (
-          <div className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-xl">
-                <h3 className="text-md font-bold mb-3 text-emerald-400">➕ Stwórz nową grupę znajomych</h3>
-                <form onSubmit={createLeague} className="flex gap-2">
-                  <input type="text" value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} required placeholder="Nazwa grupy (np. Biuro, Rodzina)" className="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-sm outline-none focus:border-emerald-500" />
-                  <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold px-4 py-2 rounded text-sm transition-colors">Utwórz</button>
-                </form>
-              </div>
-              <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-xl">
-                <h3 className="text-md font-bold mb-3 text-emerald-400">🔑 Dołącz do istniejącej grupy</h3>
-                <form onSubmit={joinLeague} className="flex gap-2">
-                  <input type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} required placeholder="Wpisz 5-znakowy kod grupy" className="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-sm uppercase outline-none focus:border-emerald-500" />
-                  <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold px-4 py-2 rounded text-sm transition-colors">Dołącz</button>
-                </form>
-              </div>
-            </div>
+                {/* Dół: Formularz wprowadzania typów */}
+                <div className="mt-5 pt-4 border-t border-gray-700/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <span className="text-xs text-gray-400 font-medium">Twój typ na mecz:</span>
+                  
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      maxLength={2}
+                      disabled={isFinished}
+                      value={predictions[match.id]?.predA || ''}
+                      onChange={e => handleInputChange(match.id, 'A', e.target.value)}
+                      className="w-12 h-9 bg-[#1a2332] border border-gray-600 rounded-lg text-center font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+                      placeholder="-"
+                    />
+                    <span className="text-gray-500 font-bold">:</span>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      disabled={isFinished}
+                      value={predictions[match.id]?.predB || ''}
+                      onChange={e => handleInputChange(match.id, 'B', e.target.value)}
+                      className="w-12 h-9 bg-[#1a2332] border border-gray-600 rounded-lg text-center font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+                      placeholder="-"
+                    />
 
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 h-fit">
-                <h4 className="text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">Twoje grupy:</h4>
-                {myLeagues.length === 0 ? <p className="text-xs text-slate-500">Nie należysz jeszcze do żadnej grupy rywalizacji.</p> : (
-                  <div className="space-y-2">
-                    {myLeagues.map(l => (
-                      <button key={l.id} onClick={() => viewLeagueRanking(l)} className={`w-full text-left p-3 rounded-lg border text-sm font-semibold transition-all flex justify-between items-center ${selectedLeague?.id === l.id ? 'bg-emerald-500 border-emerald-500 text-slate-900' : 'bg-slate-900 border-slate-700 hover:bg-slate-850'}`}>
-                        <span>👥 {l.name}</span><span className="text-xs font-mono opacity-70">KOD: {l.invite_code}</span>
-                      </button>
-                    ))}
+                    <button
+                      onClick={() => handleSavePrediction(match.id)}
+                      disabled={isFinished}
+                      className="ml-2 px-4 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-700 text-white font-bold text-xs rounded-lg transition-colors disabled:cursor-not-allowed shadow"
+                    >
+                      Zapisz
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status zapisu typu pod każdą kartą */}
+                {saveStatus[match.id] && (
+                  <div className="text-center text-xs mt-2 text-green-400 font-semibold animate-pulse">
+                    {saveStatus[match.id]}
                   </div>
                 )}
               </div>
+            )
+          })}
+        </div>
+      </div>
 
-              <div className="md:col-span-2 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
-                <div className="p-4 bg-slate-750 border-b border-slate-700">
-                  <h3 className="text-md font-bold text-emerald-400">{selectedLeague ? `Klasyfikacja grupy: ${selectedLeague.name}` : 'Wybierz grupę z listy po lewej'}</h3>
-                </div>
-                {selectedLeague && (
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-900/50 text-xs text-slate-400 font-bold uppercase border-b border-slate-700"><th className="p-3 text-center w-16">Poz</th><th className="p-3">Gracz</th><th className="p-3 text-right">Punkty razem</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700/50 text-xs">
-                      {leagueRanking.map((p, i) => (
-                        <tr key={p.id} className={`hover:bg-slate-700/30 ${p.id === user?.id ? 'bg-emerald-500/10 font-bold' : ''}`}>
-                          <td className="p-3 text-center text-slate-400">{i + 1}.</td><td className="p-3">{p.username}</td><td className="p-3 text-right text-emerald-400 font-bold font-mono">{p.total_points} pkt</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: RANKING GLOBALNY */}
-        {activeTab === 'ranking' && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
-            <div className="p-4 bg-slate-750 border-b border-slate-700"><h3 className="text-md font-bold text-emerald-400">Klasyfikacja Generalna</h3></div>
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-900/50 text-xs text-slate-400 font-bold uppercase border-b border-slate-700"><th className="p-3 text-center w-20">Pozycja</th><th className="p-3">Nazwa Użytkownika</th><th className="p-3 text-right">Suma Punktów</th></tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700/50 text-xs">
-                {ranking.map((player, index) => (
-                  <tr key={player.id} className={`hover:bg-slate-700/30 ${player.id === user?.id ? 'bg-emerald-500/10 font-bold' : ''}`}>
-                    <td className="p-3 text-center font-bold text-slate-400">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}</td>
-                    <td className="p-3">{player.username} {player.id === user?.id && <span className="text-[10px] bg-emerald-500 text-slate-900 px-1 rounded font-black">JA</span>}</td>
-                    <td className="p-3 text-right text-emerald-400 font-mono font-bold">{player.total_points} pkt</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* TAB 4: UKRYTY PANEL ADMINA + CZYŚCICIEL */}
-        {activeTab === 'admin' && profile?.role === 'admin' && (
-          <div className="space-y-6">
-            <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl text-amber-400 text-xs font-semibold">
-              🛠️ Strefa Administratora: Zarządzasz meczami oraz masz dostęp do narzędzi czyszczenia bazy danych.
-            </div>
-
-            {/* SEKCJA: CZYŚCICIEL BAZY */}
-            <div className="bg-slate-800 p-5 rounded-xl border border-red-500/20 shadow-md">
-              <h3 className="text-sm font-bold mb-3 text-red-400 uppercase tracking-wider">⚠️ Moduł czyszczenia danych testowych</h3>
-              <p className="text-slate-400 text-xs mb-4">Używaj ostrożnie. Te akcje usuwają rekordy z bazy produkcyjnej bezpowrotnie.</p>
-              <div className="flex flex-wrap gap-3">
-                <button onClick={() => adminClearData('test_users')} className="bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-500/40 px-3 py-2 rounded text-xs font-bold transition-all">❌ Usuń konta testowe (z frazą 'test')</button>
-                <button onClick={() => adminClearData('predictions')} className="bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-500/40 px-3 py-2 rounded text-xs font-bold transition-all">🧹 Resetuj i wyczyść wszystkie typy graczy</button>
-                <button onClick={() => adminClearData('matches')} className="bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-500/40 px-3 py-2 rounded text-xs font-bold transition-all">🗑️ Usuń wszystkie mecze</button>
-              </div>
-            </div>
-
-            <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md">
-              <h3 className="text-xs font-bold mb-3 text-amber-400 uppercase tracking-wider">➕ Ręczne dodawanie meczu</h3>
-              <form onSubmit={handleCreateMatch} className="grid gap-3 sm:grid-cols-2 md:grid-cols-5 items-end text-xs">
-                <div><label className="block text-slate-400 mb-1">Gospodarz</label><input type="text" value={newTeamA} onChange={(e) => setNewTeamA(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded p-2 outline-none focus:border-amber-500" placeholder="np. USA" /></div>
-                <div><label className="block text-slate-400 mb-1">Flaga emoji</label><input type="text" value={newTeamAFlag} onChange={(e) => setNewTeamAFlag(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-center outline-none focus:border-amber-500" /></div>
-                <div><label className="block text-slate-400 mb-1">Gość</label><input type="text" value={newTeamB} onChange={(e) => setNewTeamB(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded p-2 outline-none focus:border-amber-500" placeholder="np. Niemcy" /></div>
-                <div><label className="block text-slate-400 mb-1">Flaga emoji</label><input type="text" value={newTeamBFlag} onChange={(e) => setNewTeamBFlag(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-center outline-none focus:border-amber-500" /></div>
-                <div><label className="block text-slate-400 mb-1">Data i godzina</label><input type="datetime-local" value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded p-2 outline-none focus:border-amber-500" /></div>
-                <div className="md:col-span-5"><button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold p-2 rounded transition-colors uppercase font-black text-xs">Opublikuj mecz</button></div>
-              </form>
-            </div>
-          </div>
-        )}
-
-      </main>
     </div>
   )
 }
