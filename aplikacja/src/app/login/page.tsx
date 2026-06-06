@@ -30,13 +30,12 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw new Error('Błędne dane logowania.')
         
-        // Po udanym logowaniu przenosimy na Dashboard
-        router.push('/')
-        router.refresh()
+        // Twarde przekierowanie
+        window.location.href = '/'
       } else {
         // REJESTRACJA
-        if (!username.trim()) throw new Error('Musisz podać swoją nazwę gracza!')
-        if (password.length < 6) throw new Error('Hasło musi mieć minimum 6 znaków.')
+        // Po udanej rejestracji przenosimy na Dashboard
+        window.location.href = '/'
 
         const { error } = await supabase.auth.signUp({
           email,
