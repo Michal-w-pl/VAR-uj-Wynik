@@ -21,26 +21,26 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Łączymy się z API-Football (league 1 to Mistrzostwa Świata, season 2026)
-    const url = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026'
+    // Odpytujemy darmowe API o Mistrzostwa Świata (ID kompetycji: 2000)
+    const url = 'https://api.football-data.org/v4/competitions/2000/matches'
     const response = await fetch(url, {
       headers: {
-        'x-apisports-key': process.env.API_FOOTBALL_KEY!
+        'X-Auth-Token': process.env.FOOTBALL_DATA_KEY!
       },
       next: { revalidate: 0 }
     })
     
     const apiData = await response.json()
 
-    // Sprawdzamy, czy API nie zwróciło błędu (np. zły klucz)
-    if (apiData.errors && Object.keys(apiData.errors).length > 0) {
-      return NextResponse.json({ error: 'Błąd klucza API-Football', szczegoly: apiData.errors }, { status: 500 })
+    // Obsługa błędów API
+    if (apiData.errorCode || apiData.message) {
+      return NextResponse.json({ error: 'Błąd API Football-Data', szczegoly: apiData.message }, { status: 500 })
     }
 
-    const apiEvents = apiData.response
+    const apiEvents = apiData.matches
 
     if (!apiEvents || !Array.isArray(apiEvents)) {
-      return NextResponse.json({ error: 'Nieprawidłowa odpowiedź z API sportowego.', surowe_dane: apiData }, { status: 500 })
+      return NextResponse.json({ error: 'Nieprawidłowa odpowiedź', surowe_dane: apiData }, { status: 500 })
     }
 
     const { data: dbMatches } = await supabase.from('matches').select('*')
@@ -50,19 +50,18 @@ export async function GET(request: Request) {
     let updatedCount = 0
 
     for (const event of apiEvents) {
-      const apiId = event.fixture.id
-      // Status 'FT' (Koniec), 'AET' (Koniec po dogrywce), 'PEN' (Koniec po karnych)
-      const isFinished = ['FT', 'AET', 'PEN'].includes(event.fixture.status.short)
-      const startTime = event.fixture.date
+      const apiId = event.id
+      const isFinished = event.status === 'FINISHED'
+      const startTime = event.utcDate
       
       const dbMatch = dbMatchesMap.get(apiId)
 
       if (!dbMatch) {
         matchesToInsert.push({
           api_fixture_id: apiId,
-          team_a: event.teams.home.name || 'TBA',
+          team_a: event.homeTeam?.name || 'TBA',
           team_a_flag: '🏳️', 
-          team_b: event.teams.away.name || 'TBA',
+          team_b: event.awayTeam?.name || 'TBA',
           team_b_flag: '🏳️',
           start_time: startTime,
           score_a: null,
@@ -71,8 +70,9 @@ export async function GET(request: Request) {
         })
       } 
       else if (dbMatch && dbMatch.status !== 'finished' && isFinished) {
-        const finalScoreA = event.goals.home ?? 0
-        const finalScoreB = event.goals.away ?? 0
+        // Football-data przechowuje wyniki w obiekcie fullTime
+        const finalScoreA = event.score?.fullTime?.home ?? 0
+        const finalScoreB = event.score?.fullTime?.away ?? 0
 
         const { data: predictions } = await supabase.from('predictions').select('*').eq('match_id', dbMatch.id)
 
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `Synchronizacja (API-Football) zakończona. Dodano meczów: ${insertedCount}. Zaktualizowano: ${updatedCount}.` 
+      message: `Pełen Sukces! Zsynchronizowano przez Football-Data. Nowe mecze: ${insertedCount}. Zaktualizowane wyniki: ${updatedCount}.` 
     })
 
   } catch (err: any) {
