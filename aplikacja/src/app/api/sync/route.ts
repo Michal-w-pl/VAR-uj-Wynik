@@ -7,7 +7,7 @@ const supabase = createClient(
 )
 
 // Funkcja dopasowująca flagę do angielskiej nazwy kraju
-ffunction getFlagEmoji(teamName: string): string {
+function getFlagEmoji(teamName: string): string {
   const flags: { [key: string]: string } = {
     'Poland': '🇵🇱', 'Argentina': '🇦🇷', 'Brazil': '🇧🇷', 'France': '🇫🇷', 'Germany': '🇩🇪', 
     'Spain': '🇪🇸', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Portugal': '🇵🇹', 'Netherlands': '🇳🇱', 'Italy': '🇮🇹', 
