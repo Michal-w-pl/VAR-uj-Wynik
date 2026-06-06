@@ -1,17 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
-
-// Łączymy się z bazą danych
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// ZMIANA: Importujemy Twojego specjalnego klienta Next.js z ciasteczkami!
+import { createClient } from '../../utils/supabase/client' 
 
 export default function LoginPage() {
-  const router = useRouter()
+  // Inicjalizujemy gotowego klienta
+  const supabase = createClient()
+  
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,27 +26,24 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw new Error('Błędne dane logowania.')
         
-        // Twarde przekierowanie
         window.location.href = '/'
       } else {
         // REJESTRACJA
-        // Po udanej rejestracji przenosimy na Dashboard
-        window.location.href = '/'
+        if (!username.trim()) throw new Error('Musisz podać swoją nazwę gracza!')
+        if (password.length < 6) throw new Error('Hasło musi mieć minimum 6 znaków.')
 
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              username: username // <-- Tu wysyłamy Nick do bazy!
+              username: username
             }
           }
         })
         if (error) throw new Error('Błąd podczas rejestracji. Taki e-mail może już istnieć.')
         
-        // Po udanej rejestracji przenosimy na Dashboard
-        router.push('/')
-        router.refresh()
+        window.location.href = '/'
       }
     } catch (err: any) {
       setError(err.message)
@@ -78,7 +71,6 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           
-          {/* Pole widoczne TYLKO podczas rejestracji */}
           {!isLogin && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Nazwa gracza (Nick)</label>
