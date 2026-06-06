@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../utils/supabase/client'
 
-// Rozbudowany komponent flag z ogromną bazą państw i synonimów
+// Komponent flag z uzupełnionymi brakami
 const TeamFlag = ({ teamName }: { teamName: string }) => {
   const normalizedName = teamName.trim()
   
@@ -27,12 +27,12 @@ const TeamFlag = ({ teamName }: { teamName: string }) => {
     'Slovakia': 'sk', 'Slovenia': 'si', 'Albania': 'al', 'North Macedonia': 'mk', 'Georgia': 'ge',
     'Bolivia': 'bo', 'Honduras': 'hn', 'El Salvador': 'sv', 'United Arab Emirates': 'ae',
     'Iraq': 'iq', 'Oman': 'om', 'China PR': 'cn', 'China': 'cn', 'Uzbekistan': 'uz',
-    'Bahrain': 'bh', 'Syria': 'sy', 'Zambia': 'zm', 'Burkina Faso': 'bf', 'Guinea': 'gn'
+    'Bahrain': 'bh', 'Syria': 'sy', 'Zambia': 'zm', 'Burkina Faso': 'bf', 'Guinea': 'gn',
+    'Curaçao': 'cw', 'Cape Verde Islands': 'cv', 'Haiti': 'ht', 'Jordan': 'jo', 'Congo DR': 'cd'
   }
 
   const code = flags[normalizedName]
 
-  // Trik z "title": Jeśli nie ma flagi, po najechaniu na białą flagę zobaczysz, jakiej nazwy brakuje
   if (!code) return <span className="mx-2 text-xl cursor-help" title={`Brak we słowniku: ${teamName}`}>🏳️</span>
 
   return (
