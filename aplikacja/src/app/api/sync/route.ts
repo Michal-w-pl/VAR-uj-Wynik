@@ -6,6 +6,20 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// Funkcja dopasowująca flagę do angielskiej nazwy kraju
+function getFlagEmoji(teamName: string): string {
+  const flags: { [key: string]: string } = {
+    'Poland': '🇵🇱', 'Argentina': '🇦🇷', 'Brazil': '🇧🇷', 'France': '🇫🇷',
+    'Germany': '🇩🇪', 'Spain': '🇪🇸', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Portugal': '🇵🇹',
+    'Netherlands': '🇳🇱', 'Italy': '🇮🇹', 'Belgium': '🇧🇪', 'Croatia': '🇭🇷',
+    'Uruguay': '🇺🇾', 'Mexico': '🇲🇽', 'USA': '🇺🇸', 'Canada': '🇨🇦',
+    'Morocco': '🇲🇦', 'Senegal': '🇸🇳', 'Japan': '🇯🇵', 'South Korea': '🇰🇷',
+    'Australia': '🇦🇺', 'Ukraine': '🇺🇦', 'Colombia': '🇨🇴', 'Ecuador': '🇪🇨',
+    'Switzerland': '🇨🇭', 'Denmark': '🇩🇰', 'Ghana': '🇬🇭', 'Cameroon': '🇨🇲'
+  }
+  return flags[teamName] || '🏳️'
+}
+
 function calculatePoints(predA: number, predB: number, scoreA: number, scoreB: number): number {
   if (predA === scoreA && predB === scoreB) return 5
   if (Math.sign(predA - predB) === Math.sign(scoreA - scoreB)) return 2
@@ -21,18 +35,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Odpytujemy darmowe API o Mistrzostwa Świata (ID kompetycji: 2000)
     const url = 'https://api.football-data.org/v4/competitions/2000/matches'
     const response = await fetch(url, {
-      headers: {
-        'X-Auth-Token': process.env.FOOTBALL_DATA_KEY!
-      },
+      headers: { 'X-Auth-Token': process.env.FOOTBALL_DATA_KEY! },
       next: { revalidate: 0 }
     })
     
     const apiData = await response.json()
 
-    // Obsługa błędów API
     if (apiData.errorCode || apiData.message) {
       return NextResponse.json({ error: 'Błąd API Football-Data', szczegoly: apiData.message }, { status: 500 })
     }
@@ -57,12 +67,15 @@ export async function GET(request: Request) {
       const dbMatch = dbMatchesMap.get(apiId)
 
       if (!dbMatch) {
+        const homeTeamName = event.homeTeam?.name || 'TBA'
+        const awayTeamName = event.awayTeam?.name || 'TBA'
+
         matchesToInsert.push({
           api_fixture_id: apiId,
-          team_a: event.homeTeam?.name || 'TBA',
-          team_a_flag: '🏳️', 
-          team_b: event.awayTeam?.name || 'TBA',
-          team_b_flag: '🏳️',
+          team_a: homeTeamName,
+          team_a_flag: getFlagEmoji(homeTeamName), // <-- Automatyczna flaga
+          team_b: awayTeamName,
+          team_b_flag: getFlagEmoji(awayTeamName), // <-- Automatyczna flaga
           start_time: startTime,
           score_a: null,
           score_b: null,
@@ -70,7 +83,6 @@ export async function GET(request: Request) {
         })
       } 
       else if (dbMatch && dbMatch.status !== 'finished' && isFinished) {
-        // Football-data przechowuje wyniki w obiekcie fullTime
         const finalScoreA = event.score?.fullTime?.home ?? 0
         const finalScoreB = event.score?.fullTime?.away ?? 0
 
@@ -99,19 +111,14 @@ export async function GET(request: Request) {
     if (matchesToInsert.length > 0) {
       const { error: insertError } = await supabase.from('matches').insert(matchesToInsert)
       if (!insertError) insertedCount = matchesToInsert.length
-      else console.error('Błąd bazy danych podczas zapisu:', insertError)
     }
 
     return NextResponse.json({ 
       success: true, 
-      message: `Pełen Sukces! Zsynchronizowano przez Football-Data. Nowe mecze: ${insertedCount}. Zaktualizowane wyniki: ${updatedCount}.` 
+      message: `Zsynchronizowano. Nowe mecze: ${insertedCount}. Zaktualizowane wyniki: ${updatedCount}.` 
     })
 
   } catch (err: any) {
-    console.error('Krytyczny błąd synchronizacji:', err)
-    return NextResponse.json({ 
-      error: 'Szczegóły błędu: ' + err.message,
-      stack: err.stack 
-    }, { status: 500 })
+    return NextResponse.json({ error: 'Szczegóły błędu: ' + err.message }, { status: 500 })
   }
 }
