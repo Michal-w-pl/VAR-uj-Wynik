@@ -21,23 +21,26 @@ export async function GET(request: Request) {
   }
 
   try {
-    const url = `https://${process.env.RAPIDAPI_HOST}/tournaments/get-events?tournamentId=${process.env.TOURNAMENT_ID}&seasonId=${process.env.SEASON_ID}`
+    // Łączymy się z API-Football (league 1 to Mistrzostwa Świata, season 2026)
+    const url = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026'
     const response = await fetch(url, {
       headers: {
-        'x-rapidapi-key': process.env.RAPIDAPI_KEY!,
-        'x-rapidapi-host': process.env.RAPIDAPI_HOST!
+        'x-apisports-key': process.env.API_FOOTBALL_KEY!
       },
       next: { revalidate: 0 }
     })
     
     const apiData = await response.json()
-    const apiEvents = apiData.events || apiData.data?.events
+
+    // Sprawdzamy, czy API nie zwróciło błędu (np. zły klucz)
+    if (apiData.errors && Object.keys(apiData.errors).length > 0) {
+      return NextResponse.json({ error: 'Błąd klucza API-Football', szczegoly: apiData.errors }, { status: 500 })
+    }
+
+    const apiEvents = apiData.response
 
     if (!apiEvents || !Array.isArray(apiEvents)) {
-      return NextResponse.json({ 
-        error: 'Nieprawidłowa odpowiedź z API sportowego.',
-        surowe_dane: apiData 
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Nieprawidłowa odpowiedź z API sportowego.', surowe_dane: apiData }, { status: 500 })
     }
 
     const { data: dbMatches } = await supabase.from('matches').select('*')
@@ -47,18 +50,19 @@ export async function GET(request: Request) {
     let updatedCount = 0
 
     for (const event of apiEvents) {
-      const apiId = event.id
-      const isFinished = event.status?.code === 100 || event.status?.type === 'finished'
-      const startTime = new Date(event.startTimestamp * 1000).toISOString()
+      const apiId = event.fixture.id
+      // Status 'FT' (Koniec), 'AET' (Koniec po dogrywce), 'PEN' (Koniec po karnych)
+      const isFinished = ['FT', 'AET', 'PEN'].includes(event.fixture.status.short)
+      const startTime = event.fixture.date
       
       const dbMatch = dbMatchesMap.get(apiId)
 
       if (!dbMatch) {
         matchesToInsert.push({
           api_fixture_id: apiId,
-          team_a: event.homeTeam?.name || 'TBA',
-          team_a_flag: '🏳️',
-          team_b: event.awayTeam?.name || 'TBA',
+          team_a: event.teams.home.name || 'TBA',
+          team_a_flag: '🏳️', 
+          team_b: event.teams.away.name || 'TBA',
           team_b_flag: '🏳️',
           start_time: startTime,
           score_a: null,
@@ -67,8 +71,8 @@ export async function GET(request: Request) {
         })
       } 
       else if (dbMatch && dbMatch.status !== 'finished' && isFinished) {
-        const finalScoreA = event.homeScore?.current || 0
-        const finalScoreB = event.awayScore?.current || 0
+        const finalScoreA = event.goals.home ?? 0
+        const finalScoreB = event.goals.away ?? 0
 
         const { data: predictions } = await supabase.from('predictions').select('*').eq('match_id', dbMatch.id)
 
@@ -95,11 +99,12 @@ export async function GET(request: Request) {
     if (matchesToInsert.length > 0) {
       const { error: insertError } = await supabase.from('matches').insert(matchesToInsert)
       if (!insertError) insertedCount = matchesToInsert.length
+      else console.error('Błąd bazy danych podczas zapisu:', insertError)
     }
 
     return NextResponse.json({ 
       success: true, 
-      message: `Synchronizacja zakończona. Dodano nowych meczów do terminarza: ${insertedCount}. Rozliczono i zamknięto meczów: ${updatedCount}.` 
+      message: `Synchronizacja (API-Football) zakończona. Dodano meczów: ${insertedCount}. Zaktualizowano: ${updatedCount}.` 
     })
 
   } catch (err: any) {
