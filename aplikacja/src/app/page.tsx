@@ -4,23 +4,36 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../utils/supabase/client'
 
-// Komponent wyświetlający piękną grafikę flagi z zewnętrznego serwera FlagCDN (odporny na Windowsa!)
+// Rozbudowany komponent flag z ogromną bazą państw i synonimów
 const TeamFlag = ({ teamName }: { teamName: string }) => {
+  const normalizedName = teamName.trim()
+  
   const flags: Record<string, string> = {
     'Poland': 'pl', 'Argentina': 'ar', 'Brazil': 'br', 'France': 'fr', 'Germany': 'de',
     'Spain': 'es', 'England': 'gb-eng', 'Portugal': 'pt', 'Netherlands': 'nl', 'Italy': 'it',
     'Belgium': 'be', 'Croatia': 'hr', 'Uruguay': 'uy', 'Mexico': 'mx', 'United States': 'us',
-    'Canada': 'ca', 'Morocco': 'ma', 'Senegal': 'sn', 'Japan': 'jp', 'South Korea': 'kr',
-    'Australia': 'au', 'Ukraine': 'ua', 'Colombia': 'co', 'Ecuador': 'ec', 'Switzerland': 'ch',
-    'Denmark': 'dk', 'Ghana': 'gh', 'Cameroon': 'cm', 'South Africa': 'za', 'Czechia': 'cz',
-    'Bosnia-Herzegovina': 'ba', 'Paraguay': 'py', 'Qatar': 'qa', 'Serbia': 'rs', 'Chile': 'cl',
-    'Peru': 'pe', 'Venezuela': 've', 'Nigeria': 'ng', 'Algeria': 'dz', 'Egypt': 'eg',
-    'Mali': 'ml', 'Ivory Coast': 'ci', 'Jamaica': 'jm', 'Panama': 'pa', 'New Zealand': 'nz'
+    'USA': 'us', 'Canada': 'ca', 'Morocco': 'ma', 'Senegal': 'sn', 'Japan': 'jp',
+    'South Korea': 'kr', 'Korea Republic': 'kr', 'Australia': 'au', 'Ukraine': 'ua',
+    'Colombia': 'co', 'Ecuador': 'ec', 'Switzerland': 'ch', 'Denmark': 'dk', 'Ghana': 'gh',
+    'Cameroon': 'cm', 'South Africa': 'za', 'Czechia': 'cz', 'Czech Republic': 'cz',
+    'Bosnia-Herzegovina': 'ba', 'Bosnia and Herzegovina': 'ba', 'Paraguay': 'py',
+    'Qatar': 'qa', 'Serbia': 'rs', 'Chile': 'cl', 'Peru': 'pe', 'Venezuela': 've',
+    'Nigeria': 'ng', 'Algeria': 'dz', 'Egypt': 'eg', 'Mali': 'ml', 'Ivory Coast': 'ci',
+    'Côte d\'Ivoire': 'ci', 'Jamaica': 'jm', 'Panama': 'pa', 'New Zealand': 'nz',
+    'Saudi Arabia': 'sa', 'Iran': 'ir', 'IR Iran': 'ir', 'Costa Rica': 'cr', 'Tunisia': 'tn',
+    'Wales': 'gb-wls', 'Scotland': 'gb-sct', 'Republic of Ireland': 'ie', 'Northern Ireland': 'gb-nir',
+    'Sweden': 'se', 'Norway': 'no', 'Finland': 'fi', 'Iceland': 'is', 'Austria': 'at',
+    'Hungary': 'hu', 'Turkey': 'tr', 'Türkiye': 'tr', 'Greece': 'gr', 'Romania': 'ro',
+    'Slovakia': 'sk', 'Slovenia': 'si', 'Albania': 'al', 'North Macedonia': 'mk', 'Georgia': 'ge',
+    'Bolivia': 'bo', 'Honduras': 'hn', 'El Salvador': 'sv', 'United Arab Emirates': 'ae',
+    'Iraq': 'iq', 'Oman': 'om', 'China PR': 'cn', 'China': 'cn', 'Uzbekistan': 'uz',
+    'Bahrain': 'bh', 'Syria': 'sy', 'Zambia': 'zm', 'Burkina Faso': 'bf', 'Guinea': 'gn'
   }
 
-  const code = flags[teamName]
+  const code = flags[normalizedName]
 
-  if (!code) return <span className="mx-2 text-xl">🏳️</span>
+  // Trik z "title": Jeśli nie ma flagi, po najechaniu na białą flagę zobaczysz, jakiej nazwy brakuje
+  if (!code) return <span className="mx-2 text-xl cursor-help" title={`Brak we słowniku: ${teamName}`}>🏳️</span>
 
   return (
     <img
@@ -28,6 +41,7 @@ const TeamFlag = ({ teamName }: { teamName: string }) => {
       srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
       width="28"
       alt={`Flaga ${teamName}`}
+      title={teamName}
       className="inline-block mx-2 rounded shadow-sm border border-gray-700"
     />
   )
@@ -64,7 +78,6 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Sprawdź zalogowanego użytkownika
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
           window.location.href = '/login'
@@ -72,7 +85,6 @@ export default function DashboardPage() {
         }
         setUser(user)
 
-        // 2. Pobierz profil gracza (nick i punkty)
         const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
@@ -80,14 +92,12 @@ export default function DashboardPage() {
           .single()
         setProfile(profileData)
 
-        // 3. Pobierz wszystkie 104 mecze z terminarza
         const { data: matchesData } = await supabase
           .from('matches')
           .select('*')
           .order('start_time', { ascending: true })
         setMatches(matchesData || [])
 
-        // 4. Pobierz dotychczasowe typy gracza, żeby uzupełnić formularze
         const { data: predsData } = await supabase
           .from('predictions')
           .select('*')
@@ -112,9 +122,7 @@ export default function DashboardPage() {
     fetchData()
   }, [])
 
-  // Obsługa zmiany wartości w okienkach wyniku
   const handleInputChange = (matchId: number, team: 'A' | 'B', value: string) => {
-    // Pozwalamy wpisywać tylko cyfry
     if (value !== '' && !/^\d+$/.test(value)) return
 
     setPredictions(prev => ({
@@ -126,7 +134,6 @@ export default function DashboardPage() {
     }))
   }
 
-  // Funkcja wysyłająca typ gracza do bazy danych
   const handleSavePrediction = async (matchId: number) => {
     const typ = predictions[matchId]
     if (!typ || typ.predA === '' || typ.predB === '') {
@@ -137,7 +144,6 @@ export default function DashboardPage() {
     setSaveStatus(prev => ({ ...prev, [matchId]: 'Zapisywanie...' }))
 
     try {
-      // Sprawdzamy czy typ na ten mecz już istnieje w bazie
       const { data: existing } = await supabase
         .from('predictions')
         .select('id')
@@ -146,7 +152,6 @@ export default function DashboardPage() {
         .single()
 
       if (existing) {
-        // Aktualizacja istniejącego typu
         await supabase
           .from('predictions')
           .update({
@@ -155,7 +160,6 @@ export default function DashboardPage() {
           })
           .eq('id', existing.id)
       } else {
-        // Wstawienie nowego typu
         await supabase
           .from('predictions')
           .insert({
@@ -176,7 +180,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Wylogowanie
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.href = '/login'
@@ -193,7 +196,6 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#1a2332] text-white p-4 md:p-8">
       
-      {/* NAGŁÓWEK DASHBOARDU */}
       <div className="max-w-6xl mx-auto bg-[#222e43] rounded-xl p-6 mb-8 border border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
         <div>
           <h1 className="text-3xl font-extrabold text-green-500 tracking-wider">TYPER MISTRZOSTW ŚWIATA 2026</h1>
@@ -215,7 +217,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* LISTA MECZÓW DO TYPOWANIA */}
       <div className="max-w-6xl mx-auto">
         <h2 className="text-xl font-bold mb-6 text-gray-300 border-l-4 border-green-500 pl-3">Terminarz i Twoje Typy</h2>
         
@@ -231,7 +232,6 @@ export default function DashboardPage() {
                 key={match.id} 
                 className="bg-[#222e43] border border-gray-700 rounded-xl p-5 shadow-lg flex flex-col justify-between hover:border-gray-600 transition-all"
               >
-                {/* Górna belka meczu */}
                 <div className="flex justify-between items-center text-xs text-gray-400 mb-4 bg-[#1a2332]/50 p-2 rounded">
                   <span>📅 {formattedDate}</span>
                   {isFinished ? (
@@ -241,11 +241,10 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* Środek: Zespoły i flagi graficzne */}
                 <div className="grid grid-cols-3 items-center text-center my-2">
                   <div className="flex flex-col items-center gap-2">
                     <TeamFlag teamName={match.team_a} />
-                    <span className="font-bold text-sm md:text-base tracking-wide truncate max-w-full">{match.team_a}</span>
+                    <span className="font-bold text-sm md:text-base tracking-wide truncate max-w-full" title={match.team_a}>{match.team_a}</span>
                     {isFinished && <span className="text-xl font-black text-gray-300 mt-1">{match.score_a}</span>}
                   </div>
 
@@ -255,12 +254,11 @@ export default function DashboardPage() {
 
                   <div className="flex flex-col items-center gap-2">
                     <TeamFlag teamName={match.team_b} />
-                    <span className="font-bold text-sm md:text-base tracking-wide truncate max-w-full">{match.team_b}</span>
+                    <span className="font-bold text-sm md:text-base tracking-wide truncate max-w-full" title={match.team_b}>{match.team_b}</span>
                     {isFinished && <span className="text-xl font-black text-gray-300 mt-1">{match.score_b}</span>}
                   </div>
                 </div>
 
-                {/* Dół: Formularz wprowadzania typów */}
                 <div className="mt-5 pt-4 border-t border-gray-700/60 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <span className="text-xs text-gray-400 font-medium">Twój typ na mecz:</span>
                   
@@ -295,7 +293,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Status zapisu typu pod każdą kartą */}
                 {saveStatus[match.id] && (
                   <div className="text-center text-xs mt-2 text-green-400 font-semibold animate-pulse">
                     {saveStatus[match.id]}
