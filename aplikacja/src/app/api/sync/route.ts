@@ -21,8 +21,6 @@ function getFlagEmoji(teamName: string): string {
   }
   return flags[teamName] || '🏳️'
 }
-  return flags[teamName] || '🏳️'
-}
 
 function calculatePoints(predA: number, predB: number, scoreA: number, scoreB: number): number {
   if (predA === scoreA && predB === scoreB) return 5
