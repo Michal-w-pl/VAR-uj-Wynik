@@ -7,16 +7,20 @@ const supabase = createClient(
 )
 
 // Funkcja dopasowująca flagę do angielskiej nazwy kraju
-function getFlagEmoji(teamName: string): string {
+ffunction getFlagEmoji(teamName: string): string {
   const flags: { [key: string]: string } = {
-    'Poland': '🇵🇱', 'Argentina': '🇦🇷', 'Brazil': '🇧🇷', 'France': '🇫🇷',
-    'Germany': '🇩🇪', 'Spain': '🇪🇸', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Portugal': '🇵🇹',
-    'Netherlands': '🇳🇱', 'Italy': '🇮🇹', 'Belgium': '🇧🇪', 'Croatia': '🇭🇷',
-    'Uruguay': '🇺🇾', 'Mexico': '🇲🇽', 'USA': '🇺🇸', 'Canada': '🇨🇦',
-    'Morocco': '🇲🇦', 'Senegal': '🇸🇳', 'Japan': '🇯🇵', 'South Korea': '🇰🇷',
-    'Australia': '🇦🇺', 'Ukraine': '🇺🇦', 'Colombia': '🇨🇴', 'Ecuador': '🇪🇨',
-    'Switzerland': '🇨🇭', 'Denmark': '🇩🇰', 'Ghana': '🇬🇭', 'Cameroon': '🇨🇲'
+    'Poland': '🇵🇱', 'Argentina': '🇦🇷', 'Brazil': '🇧🇷', 'France': '🇫🇷', 'Germany': '🇩🇪', 
+    'Spain': '🇪🇸', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Portugal': '🇵🇹', 'Netherlands': '🇳🇱', 'Italy': '🇮🇹', 
+    'Belgium': '🇧🇪', 'Croatia': '🇭🇷', 'Uruguay': '🇺🇾', 'Mexico': '🇲🇽', 'United States': '🇺🇸', 
+    'Canada': '🇨🇦', 'Morocco': '🇲🇦', 'Senegal': '🇸🇳', 'Japan': '🇯🇵', 'South Korea': '🇰🇷', 
+    'Australia': '🇦🇺', 'Ukraine': '🇺🇦', 'Colombia': '🇨🇴', 'Ecuador': '🇪🇨', 'Switzerland': '🇨🇭', 
+    'Denmark': '🇩🇰', 'Ghana': '🇬🇭', 'Cameroon': '🇨🇲', 'South Africa': '🇿🇦', 'Czechia': '🇨🇿', 
+    'Bosnia-Herzegovina': '🇧🇦', 'Paraguay': '🇵🇾', 'Qatar': '🇶🇦', 'Serbia': '🇷🇸', 'Chile': '🇨🇱', 
+    'Peru': '🇵🇪', 'Venezuela': '🇻🇪', 'Nigeria': '🇳🇬', 'Algeria': '🇩🇿', 'Egypt': '🇪🇬', 
+    'Mali': '🇲🇱', 'Ivory Coast': '🇨🇮', 'Jamaica': '🇯🇲', 'Panama': '🇵🇦', 'New Zealand': '🇳🇿'
   }
+  return flags[teamName] || '🏳️'
+}
   return flags[teamName] || '🏳️'
 }
 
