@@ -61,14 +61,16 @@ export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  // GŁÓWNE STANY APLIKACJI
+  const [activeTab, setActiveTab] = useState<'matches' | 'groups' | 'bonus'>('matches')
+  const [matchPhase, setMatchPhase] = useState<'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'finals'>('group')
+
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [matches, setMatches] = useState<Match[]>([])
   const [predictions, setPredictions] = useState<Record<number, { predA: string; predB: string }>>({})
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<Record<number, string>>({})
-  
-  // NOWE STANY DLA TABELI GRACZY I MGŁY WOJNY
   const [leaderboard, setLeaderboard] = useState<any[]>([])
   const [matchOthers, setMatchOthers] = useState<Record<number, any[]>>({})
   const [loadingOthers, setLoadingOthers] = useState<Record<number, boolean>>({})
@@ -86,7 +88,6 @@ export default function DashboardPage() {
         const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
         setProfile(profileData)
 
-        // POBIERZ TABELĘ GRACZY
         const { data: lbData } = await supabase.from('profiles').select('*').order('total_points', { ascending: false })
         setLeaderboard(lbData || [])
 
@@ -110,6 +111,28 @@ export default function DashboardPage() {
 
     fetchData()
   }, [])
+
+  // Logika filtrowania spotkań na podstawie dat z terminarza MŚ 2026
+  const filteredMatches = matches.filter(match => {
+    const matchDate = new Date(match.start_time).getTime()
+    
+    // Przybliżone daty faz turnieju (MŚ 2026 start: 11.06)
+    const endOfGroups = new Date('2026-06-28T00:00:00Z').getTime()
+    const endOfR32 = new Date('2026-07-04T00:00:00Z').getTime() // 1/16
+    const endOfR16 = new Date('2026-07-09T00:00:00Z').getTime() // 1/8
+    const endOfQF = new Date('2026-07-13T00:00:00Z').getTime()  // Ćwierćfinały
+    const endOfSF = new Date('2026-07-17T00:00:00Z').getTime()  // Półfinały
+
+    switch (matchPhase) {
+      case 'group': return matchDate < endOfGroups
+      case 'r32': return matchDate >= endOfGroups && matchDate < endOfR32
+      case 'r16': return matchDate >= endOfR32 && matchDate < endOfR16
+      case 'qf': return matchDate >= endOfR16 && matchDate < endOfQF
+      case 'sf': return matchDate >= endOfQF && matchDate < endOfSF
+      case 'finals': return matchDate >= endOfSF
+      default: return true
+    }
+  })
 
   const handleInputChange = (matchId: number, team: 'A' | 'B', value: string) => {
     if (value !== '' && !/^\d+$/.test(value)) return
@@ -141,23 +164,15 @@ export default function DashboardPage() {
     }
   }
 
-  // NOWA FUNKCJA: Odkrywanie typów innych (Mgła Wojny)
   const handleRevealOthers = async (matchId: number) => {
     setLoadingOthers(prev => ({ ...prev, [matchId]: true }))
     try {
       const { data } = await supabase.from('predictions').select('*').eq('match_id', matchId)
-      
       const mapped = (data || []).map(p => {
         const userProfile = leaderboard.find(u => u.id === p.user_id)
-        return {
-          ...p,
-          username: userProfile?.username || 'Gracz'
-        }
+        return { ...p, username: userProfile?.username || 'Gracz' }
       })
-      
-      // Sortujemy, żeby pokazać alfabetycznie (lub według zdobytych punktów w meczu)
       mapped.sort((a, b) => (b.points_earned || 0) - (a.points_earned || 0))
-      
       setMatchOthers(prev => ({ ...prev, [matchId]: mapped }))
     } catch (err) {
       console.error(err)
@@ -180,187 +195,193 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a2332] text-white p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-[#1a2332] text-white p-2 md:p-8 font-sans">
       
-      <div className="max-w-7xl mx-auto bg-[#222e43] rounded-xl p-6 mb-8 border border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4 shadow-2xl">
-        <div>
-          <h1 className="text-3xl font-extrabold text-green-500 tracking-wider">TYPER 2026</h1>
-          <p className="text-gray-400 mt-1">
-            Zalogowany jako: <span className="text-white font-bold">{profile?.username || 'Gracz'}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="text-center bg-[#1a2332] px-6 py-3 rounded-lg border border-gray-600 shadow-inner">
-            <span className="block text-xs uppercase text-gray-400 font-semibold tracking-wider">Twoje Punkty</span>
-            <span className="text-2xl font-black text-green-400">{profile?.total_points ?? 0}</span>
+      {/* HEADER Z NAWIGACJĄ ZAKŁADEK */}
+      <div className="max-w-7xl mx-auto bg-[#222e43] rounded-xl p-4 md:p-6 mb-6 border border-gray-700 shadow-2xl">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-extrabold text-green-500 tracking-wider">TYPER 2026</h1>
+            <p className="text-gray-400 mt-1">Gracz: <span className="text-white font-bold">{profile?.username}</span></p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-red-600/20 border border-red-600 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-all text-sm font-medium"
+          <div className="flex items-center gap-4">
+            <div className="text-center bg-[#1a2332] px-4 py-2 rounded-lg border border-gray-600">
+              <span className="block text-[10px] uppercase text-gray-400 font-bold">Punkty</span>
+              <span className="text-xl font-black text-green-400">{profile?.total_points ?? 0}</span>
+            </div>
+            <button onClick={handleLogout} className="px-3 py-2 bg-red-600/20 border border-red-600 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-all text-xs font-bold">
+              Wyloguj
+            </button>
+          </div>
+        </div>
+
+        {/* GŁÓWNE MENU (ZAKŁADKI) */}
+        <div className="flex flex-wrap gap-2 border-b border-gray-700 pb-0">
+          <button 
+            onClick={() => setActiveTab('matches')}
+            className={`px-6 py-3 font-bold text-sm rounded-t-lg transition-colors ${activeTab === 'matches' ? 'bg-[#1a2332] text-green-400 border-t border-l border-r border-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
           >
-            Wyloguj
+            ⚽ Typowanie Meczy
+          </button>
+          <button 
+            onClick={() => setActiveTab('groups')}
+            className={`px-6 py-3 font-bold text-sm rounded-t-lg transition-colors ${activeTab === 'groups' ? 'bg-[#1a2332] text-green-400 border-t border-l border-r border-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+          >
+            📊 Tabele Grupowe
+          </button>
+          <button 
+            onClick={() => setActiveTab('bonus')}
+            className={`px-6 py-3 font-bold text-sm rounded-t-lg transition-colors ${activeTab === 'bonus' ? 'bg-[#1a2332] text-green-400 border-t border-l border-r border-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+          >
+            🎯 Złote Strzały
           </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* LEWA KOLUMNA: TABELA GRACZY (Na telefonie pojawia się jako pierwsza!) */}
-        <div className="order-1 lg:order-2 lg:col-span-1">
+        {/* LEWA KOLUMNA: TABELA GRACZY (Zawsze widoczna) */}
+        <div className="order-2 lg:order-1 lg:col-span-1">
           <div className="bg-[#222e43] border border-gray-700 rounded-xl p-5 sticky top-4 shadow-xl">
             <h2 className="text-lg font-bold mb-4 text-white border-l-4 border-green-500 pl-3">🏆 Tabela Graczy</h2>
             <div className="flex flex-col gap-2">
               {leaderboard.map((player, index) => (
-                <div key={player.id} className="flex items-center justify-between bg-[#1a2332] p-3 rounded-lg border border-gray-700/50">
-                  <div className="flex items-center gap-3">
-                    <span className={`font-black text-lg ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-400' : 'text-gray-500'}`}>
+                <div key={player.id} className="flex items-center justify-between bg-[#1a2332] p-2 md:p-3 rounded-lg border border-gray-700/50">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <span className={`font-black text-sm md:text-lg ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-400' : 'text-gray-500'}`}>
                       {index + 1}.
                     </span>
-                    <span className="font-semibold text-gray-200">{player.username}</span>
+                    <span className="font-semibold text-gray-200 text-sm md:text-base">{player.username}</span>
                   </div>
-                  <span className="font-bold text-green-400">{player.total_points} pkt</span>
+                  <span className="font-bold text-green-400 text-sm md:text-base">{player.total_points} pkt</span>
                 </div>
               ))}
-              {leaderboard.length === 0 && <span className="text-gray-500 text-sm">Brak graczy w lidze.</span>}
+              {leaderboard.length === 0 && <span className="text-gray-500 text-sm">Brak graczy w ligach.</span>}
             </div>
           </div>
         </div>
 
-        {/* PRAWA KOLUMNA: MECZE */}
-        <div className="order-2 lg:order-1 lg:col-span-2">
-          <h2 className="text-xl font-bold mb-6 text-gray-300 border-l-4 border-green-500 pl-3">Terminarz i Twoje Typy</h2>
+        {/* PRAWA KOLUMNA: DYNAMICZNA ZAWARTOŚĆ NA PODSTAWIE ZAKŁADKI */}
+        <div className="order-1 lg:order-2 lg:col-span-3">
           
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {matches.map(match => {
-              const isFinished = match.status === 'finished'
-              const hasStarted = new Date(match.start_time).getTime() <= Date.now() // Blokada po pierwszym gwizdku
-              const formattedDate = new Date(match.start_time).toLocaleString('pl-PL', {
-                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-              })
+          {/* --- ZAKŁADKA 1: MECZE --- */}
+          {activeTab === 'matches' && (
+            <>
+              {/* SUB-NAWIGACJA FAZ TURNIEJU */}
+              <div className="bg-[#222e43] p-2 rounded-xl mb-6 border border-gray-700 shadow flex flex-wrap gap-2 justify-center lg:justify-start">
+                <button onClick={() => setMatchPhase('group')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'group' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Faza Grupowa</button>
+                <button onClick={() => setMatchPhase('r32')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'r32' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>1/16 Finału</button>
+                <button onClick={() => setMatchPhase('r16')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'r16' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>1/8 Finału</button>
+                <button onClick={() => setMatchPhase('qf')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'qf' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Ćwierćfinały</button>
+                <button onClick={() => setMatchPhase('sf')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'sf' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Półfinały</button>
+                <button onClick={() => setMatchPhase('finals')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'finals' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Finały</button>
+              </div>
 
-              // Dynamiczny status meczu
-              let statusLabel = <span className="text-green-400 font-bold bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">⏳ Otwarte do gwizdka</span>
-              if (isFinished) {
-                statusLabel = <span className="text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">Zakończony</span>
-              } else if (hasStarted) {
-                statusLabel = <span className="text-yellow-400 font-bold bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">⚽ W trakcie gry</span>
-              }
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {filteredMatches.map(match => {
+                  const isFinished = match.status === 'finished'
+                  const hasStarted = new Date(match.start_time).getTime() <= Date.now()
+                  const formattedDate = new Date(match.start_time).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 
-              return (
-                <div key={match.id} className="bg-[#222e43] border border-gray-700 rounded-xl p-5 shadow-lg flex flex-col justify-between hover:border-gray-600 transition-all">
-                  
-                  <div className="flex justify-between items-center text-xs text-gray-400 mb-4 bg-[#1a2332]/50 p-2 rounded">
-                    <span>📅 {formattedDate}</span>
-                    {statusLabel}
-                  </div>
+                  let statusLabel = <span className="text-green-400 font-bold bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">⏳ Otwarte do gwizdka</span>
+                  if (isFinished) statusLabel = <span className="text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">Zakończony</span>
+                  else if (hasStarted) statusLabel = <span className="text-yellow-400 font-bold bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">⚽ W trakcie</span>
 
-                  <div className="grid grid-cols-3 items-center text-center my-2">
-                    <div className="flex flex-col items-center gap-2">
-                      <TeamFlag teamName={match.team_a} />
-                      <span className="font-bold text-sm md:text-base tracking-wide truncate max-w-full" title={match.team_a}>{match.team_a}</span>
-                      {hasStarted && <span className="text-xl font-black text-gray-300 mt-1">{match.score_a ?? '-'}</span>}
-                    </div>
-
-                    <div className="flex flex-col items-center">
-                      <span className="bg-[#1a2332] text-xs font-bold px-3 py-1.5 rounded-full border border-gray-700 text-green-500">VS</span>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-2">
-                      <TeamFlag teamName={match.team_b} />
-                      <span className="font-bold text-sm md:text-base tracking-wide truncate max-w-full" title={match.team_b}>{match.team_b}</span>
-                      {hasStarted && <span className="text-xl font-black text-gray-300 mt-1">{match.score_b ?? '-'}</span>}
-                    </div>
-                  </div>
-
-                  <div className="mt-5 pt-4 border-t border-gray-700/60 flex flex-col gap-3">
-                    
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                      <span className="text-xs text-gray-400 font-medium">Twój typ:</span>
-                      
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          maxLength={2}
-                          disabled={hasStarted}
-                          value={predictions[match.id]?.predA || ''}
-                          onChange={e => handleInputChange(match.id, 'A', e.target.value)}
-                          className="w-12 h-10 bg-[#1a2332] border border-gray-600 rounded-lg text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white"
-                          placeholder="-"
-                        />
-                        <span className="text-gray-500 font-bold">:</span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          maxLength={2}
-                          disabled={hasStarted}
-                          value={predictions[match.id]?.predB || ''}
-                          onChange={e => handleInputChange(match.id, 'B', e.target.value)}
-                          className="w-12 h-10 bg-[#1a2332] border border-gray-600 rounded-lg text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white"
-                          placeholder="-"
-                        />
-
-                        {!hasStarted && (
-                          <button
-                            onClick={() => handleSavePrediction(match.id)}
-                            className="ml-2 px-4 py-2 h-10 bg-green-600 hover:bg-green-500 text-white font-bold text-xs rounded-lg transition-colors shadow"
-                          >
-                            Zapisz
-                          </button>
-                        )}
+                  return (
+                    <div key={match.id} className="bg-[#222e43] border border-gray-700 rounded-xl p-4 shadow-lg flex flex-col justify-between hover:border-gray-600 transition-all">
+                      <div className="flex justify-between items-center text-xs text-gray-400 mb-4 bg-[#1a2332]/50 p-2 rounded">
+                        <span>📅 {formattedDate}</span>
+                        {statusLabel}
                       </div>
-                    </div>
 
-                    {saveStatus[match.id] && (
-                      <div className="text-center text-xs text-green-400 font-semibold animate-pulse">
-                        {saveStatus[match.id]}
+                      <div className="grid grid-cols-3 items-center text-center my-2">
+                        <div className="flex flex-col items-center gap-2">
+                          <TeamFlag teamName={match.team_a} />
+                          <span className="font-bold text-xs md:text-sm tracking-wide truncate max-w-full" title={match.team_a}>{match.team_a}</span>
+                          {hasStarted && <span className="text-xl font-black text-gray-300 mt-1">{match.score_a ?? '-'}</span>}
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="bg-[#1a2332] text-xs font-bold px-2 py-1 rounded border border-gray-700 text-green-500">VS</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-2">
+                          <TeamFlag teamName={match.team_b} />
+                          <span className="font-bold text-xs md:text-sm tracking-wide truncate max-w-full" title={match.team_b}>{match.team_b}</span>
+                          {hasStarted && <span className="text-xl font-black text-gray-300 mt-1">{match.score_b ?? '-'}</span>}
+                        </div>
                       </div>
-                    )}
 
-                    {/* MGŁA WOJNY - Widoczne tylko, gdy mecz się rozpoczął */}
-                    {hasStarted && (
-                      <div className="mt-2 pt-3 border-t border-gray-700/40">
-                        {matchOthers[match.id] ? (
-                          <div className="space-y-2">
-                            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2 font-bold">Typy z ligi:</p>
-                            {matchOthers[match.id].map(p => (
-                              <div key={p.id} className="flex justify-between items-center bg-[#1a2332] px-3 py-2 rounded-lg border border-gray-700/50">
-                                <span className="font-semibold text-gray-300 text-sm">{p.username}</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-white bg-gray-800 px-2 py-0.5 rounded">
-                                    {p.pred_a} : {p.pred_b}
-                                  </span>
-                                  {p.points_earned !== null && p.points_earned > 0 && (
-                                    <span className="text-xs font-bold text-yellow-400">+{p.points_earned} pkt</span>
-                                  )}
-                                </div>
+                      <div className="mt-4 pt-3 border-t border-gray-700/60 flex flex-col gap-3">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                          <span className="text-xs text-gray-400 font-medium">Twój typ:</span>
+                          <div className="flex items-center gap-2">
+                            <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={hasStarted} value={predictions[match.id]?.predA || ''} onChange={e => handleInputChange(match.id, 'A', e.target.value)} className="w-10 h-10 bg-[#1a2332] border border-gray-600 rounded text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 text-white" placeholder="-" />
+                            <span className="text-gray-500 font-bold">:</span>
+                            <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={hasStarted} value={predictions[match.id]?.predB || ''} onChange={e => handleInputChange(match.id, 'B', e.target.value)} className="w-10 h-10 bg-[#1a2332] border border-gray-600 rounded text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 text-white" placeholder="-" />
+                            {!hasStarted && <button onClick={() => handleSavePrediction(match.id)} className="ml-2 px-3 py-2 h-10 bg-green-600 hover:bg-green-500 text-white font-bold text-xs rounded shadow">Zapisz</button>}
+                          </div>
+                        </div>
+
+                        {saveStatus[match.id] && <div className="text-center text-xs text-green-400 font-semibold animate-pulse">{saveStatus[match.id]}</div>}
+
+                        {hasStarted && (
+                          <div className="mt-2 pt-3 border-t border-gray-700/40">
+                            {matchOthers[match.id] ? (
+                              <div className="space-y-1">
+                                <p className="text-[10px] uppercase text-gray-500 mb-1 font-bold">Typy innych:</p>
+                                {matchOthers[match.id].map(p => (
+                                  <div key={p.id} className="flex justify-between items-center bg-[#1a2332] px-2 py-1 rounded border border-gray-700/50">
+                                    <span className="font-semibold text-gray-300 text-xs">{p.username}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-white bg-gray-800 px-1.5 py-0.5 rounded text-xs">{p.pred_a} : {p.pred_b}</span>
+                                      {p.points_earned > 0 && <span className="text-[10px] font-bold text-yellow-400">+{p.points_earned}</span>}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                            {matchOthers[match.id].length === 0 && (
-                              <p className="text-xs text-gray-500 italic">Nikt w lidze nie zdążył wytypować tego meczu.</p>
+                            ) : (
+                              <button onClick={() => handleRevealOthers(match.id)} disabled={loadingOthers[match.id]} className="w-full py-1.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 rounded text-xs font-bold transition-colors">
+                                {loadingOthers[match.id] ? 'Ładowanie...' : '👁️ Odkryj typy innych'}
+                              </button>
                             )}
                           </div>
-                        ) : (
-                          <button 
-                            onClick={() => handleRevealOthers(match.id)}
-                            disabled={loadingOthers[match.id]}
-                            className="w-full py-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-xs font-bold transition-colors uppercase tracking-wider"
-                          >
-                            {loadingOthers[match.id] ? 'Ładowanie danych...' : '👁️ Odkryj typy innych graczy'}
-                          </button>
                         )}
                       </div>
-                    )}
+                    </div>
+                  )
+                })}
+                {filteredMatches.length === 0 && (
+                  <div className="col-span-2 text-center py-12 text-gray-500">Brak meczów w tej fazie.</div>
+                )}
+              </div>
+            </>
+          )}
 
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          {/* --- ZAKŁADKA 2: TABELE GRUPOWE --- */}
+          {activeTab === 'groups' && (
+            <div className="bg-[#222e43] border border-gray-700 rounded-xl p-8 text-center shadow-lg">
+              <h2 className="text-2xl font-bold text-gray-300 mb-4">Tabele Grupowe (Live)</h2>
+              <p className="text-gray-400 mb-6 max-w-lg mx-auto">
+                Tutaj wkrótce podepniemy bezpośrednie połączenie z API (Football-Data), aby na żywo pobierać rozkład punktów we wszystkich 12 grupach MŚ 2026.
+              </p>
+              <div className="animate-pulse flex justify-center space-x-4">
+                <div className="w-12 h-12 bg-gray-700 rounded-full"></div>
+                <div className="w-12 h-12 bg-gray-700 rounded-full"></div>
+                <div className="w-12 h-12 bg-gray-700 rounded-full"></div>
+              </div>
+            </div>
+          )}
+
+          {/* --- ZAKŁADKA 3: ZŁOTE STRZAŁY --- */}
+          {activeTab === 'bonus' && (
+            <div className="bg-[#222e43] border border-gray-700 rounded-xl p-8 text-center shadow-lg">
+              <h2 className="text-2xl font-bold text-yellow-500 mb-4">🎯 Złote Strzały (Wkrótce)</h2>
+              <p className="text-gray-400 max-w-lg mx-auto">
+                Miejsce na wytypowanie Mistrza Świata, Króla Strzelców i Czarnego Konia przed rozpoczęciem turnieju. Punkty bonusowe mogą wywrócić tabelę do góry nogami w dniu finału!
+              </p>
+            </div>
+          )}
+
         </div>
-
       </div>
     </div>
   )
