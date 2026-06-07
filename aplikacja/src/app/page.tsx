@@ -228,7 +228,7 @@ export default function ProDashboard() {
                 {/* Zaślepka do czasu podpięcia API */}
                 <tr className="hover:bg-white/5">
                   <td className="px-4 py-3 text-[#ccff00] font-black">1.</td>
-                  <td className="px-4 py-3"><div className="flex items-center gap-2"><TeamFlag teamName="South Africa"/> <span className="font-bold text-white">RPA</span></div></td>
+                  <td className="px-4 py-3"><TeamDisplay teamName="South Africa" /></td>
                   <td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td>
                   <td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-4 py-3 text-center text-[#ccff00] font-black text-sm">0</td>
                 </tr>
