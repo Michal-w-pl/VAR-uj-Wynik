@@ -61,7 +61,6 @@ export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  // GŁÓWNE STANY APLIKACJI
   const [activeTab, setActiveTab] = useState<'matches' | 'groups' | 'bonus'>('matches')
   const [matchPhase, setMatchPhase] = useState<'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'finals'>('group')
 
@@ -112,16 +111,13 @@ export default function DashboardPage() {
     fetchData()
   }, [])
 
-  // Logika filtrowania spotkań na podstawie dat z terminarza MŚ 2026
   const filteredMatches = matches.filter(match => {
     const matchDate = new Date(match.start_time).getTime()
-    
-    // Przybliżone daty faz turnieju (MŚ 2026 start: 11.06)
     const endOfGroups = new Date('2026-06-28T00:00:00Z').getTime()
-    const endOfR32 = new Date('2026-07-04T00:00:00Z').getTime() // 1/16
-    const endOfR16 = new Date('2026-07-09T00:00:00Z').getTime() // 1/8
-    const endOfQF = new Date('2026-07-13T00:00:00Z').getTime()  // Ćwierćfinały
-    const endOfSF = new Date('2026-07-17T00:00:00Z').getTime()  // Półfinały
+    const endOfR32 = new Date('2026-07-04T00:00:00Z').getTime()
+    const endOfR16 = new Date('2026-07-09T00:00:00Z').getTime()
+    const endOfQF = new Date('2026-07-13T00:00:00Z').getTime()
+    const endOfSF = new Date('2026-07-17T00:00:00Z').getTime()
 
     switch (matchPhase) {
       case 'group': return matchDate < endOfGroups
@@ -195,52 +191,29 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a2332] text-white p-2 md:p-8 font-sans">
+    // Zmieniamy min-h-screen i dodajemy padding bottom (pb-24), żeby treść nie wchodziła pod dolną belkę
+    <div className="min-h-screen bg-[#1a2332] text-white p-2 md:p-8 font-sans pb-24 md:pb-24">
       
-      {/* HEADER Z NAWIGACJĄ ZAKŁADEK */}
-      <div className="max-w-7xl mx-auto bg-[#222e43] rounded-xl p-4 md:p-6 mb-6 border border-gray-700 shadow-2xl">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold text-green-500 tracking-wider">TYPER 2026</h1>
-            <p className="text-gray-400 mt-1">Gracz: <span className="text-white font-bold">{profile?.username}</span></p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-center bg-[#1a2332] px-4 py-2 rounded-lg border border-gray-600">
-              <span className="block text-[10px] uppercase text-gray-400 font-bold">Punkty</span>
-              <span className="text-xl font-black text-green-400">{profile?.total_points ?? 0}</span>
-            </div>
-            <button onClick={handleLogout} className="px-3 py-2 bg-red-600/20 border border-red-600 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-all text-xs font-bold">
-              Wyloguj
-            </button>
-          </div>
+      {/* HEADER (Tylko logo, profil, wyloguj - BEZ ZAKŁADEK) */}
+      <div className="max-w-7xl mx-auto bg-[#222e43] rounded-xl p-4 md:p-6 mb-6 border border-gray-700 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-green-500 tracking-wider">TYPER 2026</h1>
+          <p className="text-gray-400 mt-1">Gracz: <span className="text-white font-bold">{profile?.username}</span></p>
         </div>
-
-        {/* GŁÓWNE MENU (ZAKŁADKI) */}
-        <div className="flex flex-wrap gap-2 border-b border-gray-700 pb-0">
-          <button 
-            onClick={() => setActiveTab('matches')}
-            className={`px-6 py-3 font-bold text-sm rounded-t-lg transition-colors ${activeTab === 'matches' ? 'bg-[#1a2332] text-green-400 border-t border-l border-r border-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-          >
-            ⚽ Typowanie Meczy
-          </button>
-          <button 
-            onClick={() => setActiveTab('groups')}
-            className={`px-6 py-3 font-bold text-sm rounded-t-lg transition-colors ${activeTab === 'groups' ? 'bg-[#1a2332] text-green-400 border-t border-l border-r border-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-          >
-            📊 Tabele Grupowe
-          </button>
-          <button 
-            onClick={() => setActiveTab('bonus')}
-            className={`px-6 py-3 font-bold text-sm rounded-t-lg transition-colors ${activeTab === 'bonus' ? 'bg-[#1a2332] text-green-400 border-t border-l border-r border-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-          >
-            🎯 Złote Strzały
+        <div className="flex items-center gap-4">
+          <div className="text-center bg-[#1a2332] px-4 py-2 rounded-lg border border-gray-600">
+            <span className="block text-[10px] uppercase text-gray-400 font-bold">Punkty</span>
+            <span className="text-xl font-black text-green-400">{profile?.total_points ?? 0}</span>
+          </div>
+          <button onClick={handleLogout} className="px-3 py-2 bg-red-600/20 border border-red-600 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-all text-xs font-bold">
+            Wyloguj
           </button>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* LEWA KOLUMNA: TABELA GRACZY (Zawsze widoczna) */}
+        {/* LEWA KOLUMNA: TABELA GRACZY */}
         <div className="order-2 lg:order-1 lg:col-span-1">
           <div className="bg-[#222e43] border border-gray-700 rounded-xl p-5 sticky top-4 shadow-xl">
             <h2 className="text-lg font-bold mb-4 text-white border-l-4 border-green-500 pl-3">🏆 Tabela Graczy</h2>
@@ -261,7 +234,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* PRAWA KOLUMNA: DYNAMICZNA ZAWARTOŚĆ NA PODSTAWIE ZAKŁADKI */}
+        {/* PRAWA KOLUMNA: DYNAMICZNA ZAWARTOŚĆ NA PODSTAWIE AKTYWNEJ ZAKŁADKI Z DOLNEGO MENU */}
         <div className="order-1 lg:order-2 lg:col-span-3">
           
           {/* --- ZAKŁADKA 1: MECZE --- */}
@@ -269,12 +242,12 @@ export default function DashboardPage() {
             <>
               {/* SUB-NAWIGACJA FAZ TURNIEJU */}
               <div className="bg-[#222e43] p-2 rounded-xl mb-6 border border-gray-700 shadow flex flex-wrap gap-2 justify-center lg:justify-start">
-                <button onClick={() => setMatchPhase('group')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'group' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Faza Grupowa</button>
-                <button onClick={() => setMatchPhase('r32')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'r32' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>1/16 Finału</button>
-                <button onClick={() => setMatchPhase('r16')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'r16' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>1/8 Finału</button>
-                <button onClick={() => setMatchPhase('qf')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'qf' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Ćwierćfinały</button>
-                <button onClick={() => setMatchPhase('sf')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'sf' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Półfinały</button>
-                <button onClick={() => setMatchPhase('finals')} className={`px-4 py-2 text-xs font-bold rounded-lg ${matchPhase === 'finals' ? 'bg-green-600 text-white' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Finały</button>
+                <button onClick={() => setMatchPhase('group')} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${matchPhase === 'group' ? 'bg-green-600 text-white shadow' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Faza Grupowa</button>
+                <button onClick={() => setMatchPhase('r32')} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${matchPhase === 'r32' ? 'bg-green-600 text-white shadow' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>1/16 Finału</button>
+                <button onClick={() => setMatchPhase('r16')} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${matchPhase === 'r16' ? 'bg-green-600 text-white shadow' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>1/8 Finału</button>
+                <button onClick={() => setMatchPhase('qf')} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${matchPhase === 'qf' ? 'bg-green-600 text-white shadow' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Ćwierćfinały</button>
+                <button onClick={() => setMatchPhase('sf')} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${matchPhase === 'sf' ? 'bg-green-600 text-white shadow' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Półfinały</button>
+                <button onClick={() => setMatchPhase('finals')} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${matchPhase === 'finals' ? 'bg-green-600 text-white shadow' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}>Finały</button>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -350,7 +323,7 @@ export default function DashboardPage() {
                   )
                 })}
                 {filteredMatches.length === 0 && (
-                  <div className="col-span-2 text-center py-12 text-gray-500">Brak meczów w tej fazie.</div>
+                  <div className="col-span-2 text-center py-12 text-gray-500 font-medium">Brak meczów w tej fazie.</div>
                 )}
               </div>
             </>
@@ -361,7 +334,7 @@ export default function DashboardPage() {
             <div className="bg-[#222e43] border border-gray-700 rounded-xl p-8 text-center shadow-lg">
               <h2 className="text-2xl font-bold text-gray-300 mb-4">Tabele Grupowe (Live)</h2>
               <p className="text-gray-400 mb-6 max-w-lg mx-auto">
-                Tutaj wkrótce podepniemy bezpośrednie połączenie z API (Football-Data), aby na żywo pobierać rozkład punktów we wszystkich 12 grupach MŚ 2026.
+                Tutaj wkrótce podepniemy bezpośrednie połączenie z API (Football-Data), aby na żywo pobierać rozkład punktów we wszystkich grupach MŚ 2026.
               </p>
               <div className="animate-pulse flex justify-center space-x-4">
                 <div className="w-12 h-12 bg-gray-700 rounded-full"></div>
@@ -380,9 +353,45 @@ export default function DashboardPage() {
               </p>
             </div>
           )}
-
         </div>
       </div>
+
+      {/* --- NOWOCZESNA DOLNA NAWIGACJA (BOTTOM NAV BAR) w stylu Spotify --- */}
+      <nav className="fixed bottom-0 left-0 w-full bg-[#161e2c]/95 backdrop-blur-md border-t border-gray-800 z-50">
+        <div className="max-w-md mx-auto flex justify-between items-center px-2 py-2">
+          
+          <button 
+            onClick={() => setActiveTab('matches')} 
+            className={`flex flex-col items-center justify-center p-2 w-1/3 transition-colors ${activeTab === 'matches' ? 'text-green-500' : 'text-gray-400 hover:text-gray-300'}`}
+          >
+            <svg className="w-6 h-6 mb-1" fill={activeTab === 'matches' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+            </svg>
+            <span className="text-[10px] font-semibold tracking-wider">Mecze</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('groups')} 
+            className={`flex flex-col items-center justify-center p-2 w-1/3 transition-colors ${activeTab === 'groups' ? 'text-green-500' : 'text-gray-400 hover:text-gray-300'}`}
+          >
+            <svg className="w-6 h-6 mb-1" fill={activeTab === 'groups' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            <span className="text-[10px] font-semibold tracking-wider">Tabele</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('bonus')} 
+            className={`flex flex-col items-center justify-center p-2 w-1/3 transition-colors ${activeTab === 'bonus' ? 'text-green-500' : 'text-gray-400 hover:text-gray-300'}`}
+          >
+            <svg className="w-6 h-6 mb-1" fill={activeTab === 'bonus' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+            </svg>
+            <span className="text-[10px] font-semibold tracking-wider">Bonusy</span>
+          </button>
+
+        </div>
+      </nav>
     </div>
   )
 }
