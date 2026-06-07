@@ -59,6 +59,22 @@ interface Match {
   id: number; api_fixture_id: number; team_a: string; team_b: string; start_time: string; status: string; score_a: number | null; score_b: number | null;
 }
 
+// BAZA DANYCH DRUŻYN W GRUPACH (Służy do tabeli ORAZ do filtrowania meczów)
+const groupsData: Record<string, any[]> = {
+  'GR. A': [ { name: 'South Africa', w: 1, r: 1, p: 0, pts: 4 }, { name: 'Czechia', w: 1, r: 0, p: 1, pts: 3 }, { name: 'Mexico', w: 0, r: 1, p: 0, pts: 1 }, { name: 'South Korea', w: 0, r: 0, p: 1, pts: 0 } ],
+  'GR. B': [ { name: 'Canada', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Bosnia-Herzegovina', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Cameroon', w: 0, r: 0, p: 0, pts: 0 }, { name: 'New Zealand', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. C': [ { name: 'United States', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Japan', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Denmark', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Paraguay', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. D': [ { name: 'Brazil', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Morocco', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Switzerland', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Qatar', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. E': [ { name: 'Argentina', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Jordan', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Austria', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Algeria', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. F': [ { name: 'Spain', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Senegal', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ukraine', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ecuador', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. G': [ { name: 'France', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Tunisia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Mali', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Peru', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. H': [ { name: 'England', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Saudi Arabia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Colombia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Panama', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. I': [ { name: 'Portugal', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Iran', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Uruguay', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Jamaica', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. J': [ { name: 'Netherlands', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Costa Rica', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Chile', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ghana', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. K': [ { name: 'Italy', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ivory Coast', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Serbia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Australia', w: 0, r: 0, p: 0, pts: 0 } ],
+  'GR. L': [ { name: 'Germany', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Nigeria', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Croatia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Venezuela', w: 0, r: 0, p: 0, pts: 0 } ]
+}
+
 export default function ProDashboard() {
   const router = useRouter()
   const supabase = createClient()
@@ -125,38 +141,34 @@ export default function ProDashboard() {
     }
   }
 
-  // --- LOGIKA FILTROWANIA MECZÓW ---
+  // --- KOMPLETNA LOGIKA FILTROWANIA MECZÓW ---
   const endOfGroups = new Date('2026-06-29T00:00:00Z').getTime()
   
   const groupMatches = matches.filter(m => new Date(m.start_time).getTime() < endOfGroups)
   const knockoutMatches = matches.filter(m => new Date(m.start_time).getTime() >= endOfGroups)
   const myPredictedMatches = matches.filter(m => predictions[m.id] && predictions[m.id].predA !== '' && predictions[m.id].predB !== '')
 
+  // 1. Ustal bazową pulę meczów dla zakładki
   let displayMatches = activeTab === 'Mecze' ? groupMatches : activeTab === 'Puchar' ? knockoutMatches : activeTab === 'Moje typy' ? myPredictedMatches : []
   
+  // 2. FILTROWANIE PO WYBRANEJ GRUPIE (Kluczowa naprawa)
+  if (['Mecze', 'Moje typy'].includes(activeTab) && activeGroup !== 'WSZYSTKIE') {
+    const teamsInActiveGroup = groupsData[activeGroup]?.map(t => t.name) || []
+    
+    displayMatches = displayMatches.filter(match => 
+      teamsInActiveGroup.includes(match.team_a) || teamsInActiveGroup.includes(match.team_b)
+    )
+  }
+
+  // 3. Filtrowanie pustych typów
   if (onlyUnpredicted) {
     displayMatches = displayMatches.filter(m => !predictions[m.id] || predictions[m.id].predA === '' || predictions[m.id].predB === '')
   }
 
-  const unpredictedCount = matches.filter(m => !predictions[m.id] || predictions[m.id].predA === '').length
+  const unpredictedCount = displayMatches.filter(m => !predictions[m.id] || predictions[m.id].predA === '').length
   const myRank = leaderboard.findIndex(p => p.id === user?.id) + 1
 
-  // --- DYNAMICZNE DANE DLA TABEL GRUPOWYCH (Mockup przed podpięciem API) ---
-  const groupsData: Record<string, any[]> = {
-    'GR. A': [ { name: 'South Africa', w: 1, r: 1, p: 0, pts: 4 }, { name: 'Czechia', w: 1, r: 0, p: 1, pts: 3 }, { name: 'Mexico', w: 0, r: 1, p: 0, pts: 1 }, { name: 'South Korea', w: 0, r: 0, p: 1, pts: 0 } ],
-    'GR. B': [ { name: 'Canada', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Bosnia-Herzegovina', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Cameroon', w: 0, r: 0, p: 0, pts: 0 }, { name: 'New Zealand', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. C': [ { name: 'United States', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Japan', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Denmark', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Paraguay', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. D': [ { name: 'Brazil', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Morocco', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Switzerland', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Qatar', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. E': [ { name: 'Argentina', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Jordan', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Austria', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Algeria', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. F': [ { name: 'Spain', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Senegal', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ukraine', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ecuador', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. G': [ { name: 'France', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Tunisia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Mali', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Peru', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. H': [ { name: 'England', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Saudi Arabia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Colombia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Panama', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. I': [ { name: 'Portugal', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Iran', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Uruguay', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Jamaica', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. J': [ { name: 'Netherlands', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Costa Rica', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Chile', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ghana', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. K': [ { name: 'Italy', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ivory Coast', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Serbia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Australia', w: 0, r: 0, p: 0, pts: 0 } ],
-    'GR. L': [ { name: 'Germany', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Nigeria', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Croatia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Venezuela', w: 0, r: 0, p: 0, pts: 0 } ]
-  }
-
+  // --- RENDERING TABELI GRUPOWEJ ---
   const renderGroupTable = (groupName: string) => {
     const teams = groupsData[groupName]
     if (!teams) return null
@@ -195,11 +207,11 @@ export default function ProDashboard() {
 
   // --- RENDERING LISTY MECZÓW ---
   const renderMatchList = (matchList: Match[]) => {
-    if (matchList.length === 0) return <div className="text-center py-12 text-gray-500 font-medium bg-[#111827] rounded border border-gray-800">Brak meczów spełniających filtry.</div>
+    if (matchList.length === 0) return <div className="text-center py-12 text-gray-500 font-medium bg-[#111827] rounded border border-gray-800 shadow-sm">Brak meczów dla tej grupy w bazie.</div>
     
     return (
       <div className="flex flex-col gap-3">
-        {matchList.slice(0, 15).map(match => { // Wyświetlamy partiami dla wydajności
+        {matchList.map(match => { 
           const isFinished = match.status === 'finished'
           const dateObj = new Date(match.start_time)
           const days = ['Niedz.', 'Pon.', 'Wt.', 'Śr.', 'Czw.', 'Pt.', 'Sob.']
@@ -208,8 +220,8 @@ export default function ProDashboard() {
           const timeString = dateObj.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
 
           return (
-            <div key={match.id} className="flex flex-col md:flex-row items-center justify-between bg-[#111827] border-l-4 border-transparent hover:border-[#ccff00] transition-colors p-3 md:p-4 gap-4 shadow-sm">
-              <div className="flex flex-col w-full md:w-32 shrink-0">
+            <div key={match.id} className="flex flex-col md:flex-row items-center justify-between bg-[#111827] border-l-4 border-transparent hover:border-[#ccff00] transition-colors p-3 md:p-4 gap-4 shadow-sm group">
+              <div className="flex flex-col w-full md:w-32 shrink-0 border-b md:border-b-0 md:border-r border-gray-800 pb-2 md:pb-0">
                 <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">{dateString}</span>
                 <span className="text-xl font-black text-white">{timeString}</span>
               </div>
@@ -244,15 +256,16 @@ export default function ProDashboard() {
     )
   }
 
-  if (loading) return <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center text-[#ccff00] font-black tracking-widest uppercase">Ładowanie interfejsu...</div>
+  if (loading) return <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center text-[#ccff00] font-black tracking-widest uppercase">Wczytywanie...</div>
 
   return (
     <div className="min-h-screen bg-[#0a0e17] text-gray-300 font-sans selection:bg-[#ccff00] selection:text-black">
       
+      {/* TOP NAV */}
       <nav className="bg-[#111827] border-b border-gray-800 sticky top-0 z-50 flex items-center justify-between px-4 h-16 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-1 min-w-max">
           {navItems.map(item => (
-            <button key={item.name} onClick={() => setActiveTab(item.name)} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === item.name ? 'text-[#ccff00] border-b-2 border-[#ccff00] bg-white/5' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}>
+            <button key={item.name} onClick={() => { setActiveTab(item.name); setActiveGroup('WSZYSTKIE'); setOnlyUnpredicted(false); }} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === item.name ? 'text-[#ccff00] border-b-2 border-[#ccff00] bg-white/5' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}>
               {item.name}
             </button>
           ))}
@@ -266,6 +279,7 @@ export default function ProDashboard() {
         </div>
       </nav>
 
+      {/* SUB NAV GRUPY */}
       {['Mecze', 'Moje typy'].includes(activeTab) && (
         <div className="bg-[#111827] border-b border-gray-800 px-4 py-0 flex gap-6 overflow-x-auto no-scrollbar">
           {groupsList.map(group => (
@@ -278,12 +292,15 @@ export default function ProDashboard() {
 
       <div className="max-w-7xl mx-auto p-4 md:p-6 animate-fade-in">
         
-        {activeTab === 'Mecze' && (
+        {/* =========================================
+            ZAKŁADKA: MECZE / MOJE TYPY
+            ========================================= */}
+        {['Mecze', 'Moje typy'].includes(activeTab) && (
           <div>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
               <div className="flex items-center gap-4 border-b border-gray-800 pb-2 w-full sm:w-auto">
                 <h2 className="bg-[#ccff00] text-black font-black px-4 py-1 text-lg uppercase">
-                  {activeGroup === 'WSZYSTKIE' ? 'FAZA GRUPOWA' : activeGroup}
+                  {activeGroup === 'WSZYSTKIE' ? (activeTab === 'Moje typy' ? 'WYTYPOWANE: WSZYSTKIE GRUPY' : 'FAZA GRUPOWA') : activeGroup}
                 </h2>
               </div>
               <label className="flex items-center gap-3 px-4 py-2 bg-[#111827] rounded border border-gray-800 cursor-pointer hover:bg-white/5 transition-colors w-full sm:w-auto">
@@ -293,12 +310,27 @@ export default function ProDashboard() {
               </label>
             </div>
 
+            {/* Renderuje tabele TYLKO jeśli wybrano konkretną grupę */}
             {activeGroup !== 'WSZYSTKIE' && renderGroupTable(activeGroup)}
+            
+            {/* Lista meczów PRZEFILTROWANA przez drużyny z tabeli */}
             {renderMatchList(displayMatches)}
           </div>
         )}
 
-        {/* INNE ZAKŁADKI (RANKING ITD.) POZOSTAJĄ BEZ ZMIAN */}
+        {/* =========================================
+            ZAKŁADKA: PUCHAR
+            ========================================= */}
+        {activeTab === 'Puchar' && (
+          <div>
+            <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-widest border-l-4 border-[#ccff00] pl-4">Faza Pucharowa</h2>
+            {renderMatchList(displayMatches)}
+          </div>
+        )}
+
+        {/* =========================================
+            ZAKŁADKA: RANKING LIGI
+            ========================================= */}
         {activeTab === 'Ranking' && (
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-widest border-l-4 border-[#ccff00] pl-4">Klasyfikacja Typerów</h2>
@@ -316,8 +348,10 @@ export default function ProDashboard() {
           </div>
         )}
 
-        {/* PLACEHOLDER DLA RESZTY */}
-        {!['Mecze', 'Ranking'].includes(activeTab) && (
+        {/* =========================================
+            POZOSTAŁE ZAKŁADKI (W BUDOWIE)
+            ========================================= */}
+        {!['Mecze', 'Moje typy', 'Puchar', 'Ranking'].includes(activeTab) && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <span className="text-6xl mb-4">🚧</span>
             <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-widest">Moduł w przygotowaniu</h2>
