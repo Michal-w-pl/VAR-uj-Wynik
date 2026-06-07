@@ -1,49 +1,54 @@
-
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../utils/supabase/client'
 
-const TeamFlag = ({ teamName }: { teamName: string }) => {
+// --- SŁOWNIKI: Flagi i polskie nazwy ---
+const TeamDisplay = ({ teamName, align = 'left' }: { teamName: string, align?: 'left' | 'right' }) => {
   const normalizedName = teamName.trim()
   
-  const flags: Record<string, string> = {
-    'Poland': 'pl', 'Argentina': 'ar', 'Brazil': 'br', 'France': 'fr', 'Germany': 'de',
-    'Spain': 'es', 'England': 'gb-eng', 'Portugal': 'pt', 'Netherlands': 'nl', 'Italy': 'it',
-    'Belgium': 'be', 'Croatia': 'hr', 'Uruguay': 'uy', 'Mexico': 'mx', 'United States': 'us',
-    'USA': 'us', 'Canada': 'ca', 'Morocco': 'ma', 'Senegal': 'sn', 'Japan': 'jp',
-    'South Korea': 'kr', 'Korea Republic': 'kr', 'Australia': 'au', 'Ukraine': 'ua',
-    'Colombia': 'co', 'Ecuador': 'ec', 'Switzerland': 'ch', 'Denmark': 'dk', 'Ghana': 'gh',
-    'Cameroon': 'cm', 'South Africa': 'za', 'Czechia': 'cz', 'Czech Republic': 'cz',
-    'Bosnia-Herzegovina': 'ba', 'Bosnia and Herzegovina': 'ba', 'Paraguay': 'py',
-    'Qatar': 'qa', 'Serbia': 'rs', 'Chile': 'cl', 'Peru': 'pe', 'Venezuela': 've',
-    'Nigeria': 'ng', 'Algeria': 'dz', 'Egypt': 'eg', 'Mali': 'ml', 'Ivory Coast': 'ci',
-    'Côte d\'Ivoire': 'ci', 'Jamaica': 'jm', 'Panama': 'pa', 'New Zealand': 'nz',
-    'Saudi Arabia': 'sa', 'Iran': 'ir', 'IR Iran': 'ir', 'Costa Rica': 'cr', 'Tunisia': 'tn',
-    'Wales': 'gb-wls', 'Scotland': 'gb-sct', 'Republic of Ireland': 'ie', 'Northern Ireland': 'gb-nir',
-    'Sweden': 'se', 'Norway': 'no', 'Finland': 'fi', 'Iceland': 'is', 'Austria': 'at',
-    'Hungary': 'hu', 'Turkey': 'tr', 'Türkiye': 'tr', 'Greece': 'gr', 'Romania': 'ro',
-    'Slovakia': 'sk', 'Slovenia': 'si', 'Albania': 'al', 'North Macedonia': 'mk', 'Georgia': 'ge',
-    'Bolivia': 'bo', 'Honduras': 'hn', 'El Salvador': 'sv', 'United Arab Emirates': 'ae',
-    'Iraq': 'iq', 'Oman': 'om', 'China PR': 'cn', 'China': 'cn', 'Uzbekistan': 'uz',
-    'Bahrain': 'bh', 'Syria': 'sy', 'Zambia': 'zm', 'Burkina Faso': 'bf', 'Guinea': 'gn',
-    'Curaçao': 'cw', 'Cape Verde Islands': 'cv', 'Haiti': 'ht', 'Jordan': 'jo', 'Congo DR': 'cd'
+  const translations: Record<string, { code: string, pl: string }> = {
+    'Poland': { code: 'pl', pl: 'Polska' }, 'Argentina': { code: 'ar', pl: 'Argentyna' }, 
+    'Brazil': { code: 'br', pl: 'Brazylia' }, 'France': { code: 'fr', pl: 'Francja' }, 
+    'Germany': { code: 'de', pl: 'Niemcy' }, 'Spain': { code: 'es', pl: 'Hiszpania' }, 
+    'England': { code: 'gb-eng', pl: 'Anglia' }, 'Portugal': { code: 'pt', pl: 'Portugalia' }, 
+    'Netherlands': { code: 'nl', pl: 'Holandia' }, 'Italy': { code: 'it', pl: 'Włochy' },
+    'Belgium': { code: 'be', pl: 'Belgia' }, 'Croatia': { code: 'hr', pl: 'Chorwacja' }, 
+    'Uruguay': { code: 'uy', pl: 'Urugwaj' }, 'Mexico': { code: 'mx', pl: 'Meksyk' }, 
+    'United States': { code: 'us', pl: 'USA' }, 'USA': { code: 'us', pl: 'USA' }, 
+    'Canada': { code: 'ca', pl: 'Kanada' }, 'Morocco': { code: 'ma', pl: 'Maroko' }, 
+    'Senegal': { code: 'sn', pl: 'Senegal' }, 'Japan': { code: 'jp', pl: 'Japonia' },
+    'South Korea': { code: 'kr', pl: 'Korea Płd.' }, 'Korea Republic': { code: 'kr', pl: 'Korea Płd.' }, 
+    'Australia': { code: 'au', pl: 'Australia' }, 'Ukraine': { code: 'ua', pl: 'Ukraina' },
+    'Colombia': { code: 'co', pl: 'Kolumbia' }, 'Ecuador': { code: 'ec', pl: 'Ekwador' }, 
+    'Switzerland': { code: 'ch', pl: 'Szwajcaria' }, 'Denmark': { code: 'dk', pl: 'Dania' }, 
+    'Ghana': { code: 'gh', pl: 'Ghana' }, 'Cameroon': { code: 'cm', pl: 'Kamerun' }, 
+    'South Africa': { code: 'za', pl: 'RPA' }, 'Czechia': { code: 'cz', pl: 'Czechy' }, 
+    'Czech Republic': { code: 'cz', pl: 'Czechy' }, 'Serbia': { code: 'rs', pl: 'Serbia' },
+    // Domyślny fallback dla braku w słowniku:
   }
 
-  const code = flags[normalizedName]
+  const teamData = translations[normalizedName] || { code: null, pl: teamName }
 
-  if (!code) return <span className="mx-2 text-xl cursor-help" title={`Brak we słowniku: ${teamName}`}>🏳️</span>
+  const Flag = teamData.code ? (
+    <img src={`https://flagcdn.com/w40/${teamData.code}.png`} width="24" alt="flaga" className="rounded-sm shadow-sm" />
+  ) : <span className="text-sm">🏳️</span>
+
+  if (align === 'right') {
+    return (
+      <div className="flex items-center justify-end gap-3 w-32 md:w-48">
+        <span className="font-bold text-gray-200 text-sm md:text-base text-right truncate">{teamData.pl}</span>
+        {Flag}
+      </div>
+    )
+  }
 
   return (
-    <img
-      src={`https://flagcdn.com/w40/${code}.png`}
-      srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
-      width="24"
-      alt={`Flaga ${teamName}`}
-      title={teamName}
-      className="inline-block mx-1 md:mx-2 rounded shadow-sm border border-gray-700"
-    />
+    <div className="flex items-center justify-start gap-3 w-32 md:w-48">
+      {Flag}
+      <span className="font-bold text-gray-200 text-sm md:text-base text-left truncate">{teamData.pl}</span>
+    </div>
   )
 }
 
@@ -56,377 +61,249 @@ interface Match {
   status: string
   score_a: number | null
   score_b: number | null
+  // Wkrótce dodamy tu kolumnę 'group_name' do bazy!
 }
 
-export default function DashboardPage() {
+export default function ProDashboard() {
   const router = useRouter()
   const supabase = createClient()
-
-  // Zaktualizowane stany zakładek (4 główne sekcje)
-  const [activeTab, setActiveTab] = useState<'matches' | 'tables' | 'ranking' | 'bonus'>('matches')
-  // Zaktualizowane fazy (tylko 2 główne filtry)
-  const [matchPhase, setMatchPhase] = useState<'group' | 'knockout'>('group')
 
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [matches, setMatches] = useState<Match[]>([])
   const [predictions, setPredictions] = useState<Record<number, { predA: string; predB: string }>>({})
   const [loading, setLoading] = useState(true)
-  const [saveStatus, setSaveStatus] = useState<Record<number, string>>({})
-  const [leaderboard, setLeaderboard] = useState<any[]>([])
-  const [matchOthers, setMatchOthers] = useState<Record<number, any[]>>({})
-  const [loadingOthers, setLoadingOthers] = useState<Record<number, boolean>>({})
+  
+  // UI States
+  const [activeTab, setActiveTab] = useState('Mecze')
+  const [activeGroup, setActiveGroup] = useState('WSZYSTKIE')
+  const [onlyUnpredicted, setOnlyUnpredicted] = useState(false)
+
+  const groups = ['WSZYSTKIE', 'GR. A', 'GR. B', 'GR. C', 'GR. D', 'GR. E', 'GR. F', 'GR. G', 'GR. H', 'GR. I', 'GR. J', 'GR. K', 'GR. L']
+  const navItems = [
+    { name: 'Start', icon: '⚽' }, { name: 'Mecze', icon: '📅' }, { name: 'Puchar', icon: '⚔️' }, 
+    { name: 'Stats', icon: '📊' }, { name: 'Inni', icon: '👁️' }, { name: 'Bonus', icon: '🎯' }, 
+    { name: 'Moje typy', icon: '🎯' }, { name: 'Ranking', icon: '🏆' }, { name: 'Grupy', icon: '👥' }
+  ]
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
-          window.location.href = '/login'
-          return
-        }
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error || !user) return window.location.href = '/login'
         setUser(user)
 
-        const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-        setProfile(profileData)
+        const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        setProfile(prof)
 
-        const { data: lbData } = await supabase.from('profiles').select('*').order('total_points', { ascending: false })
-        setLeaderboard(lbData || [])
+        const { data: mData } = await supabase.from('matches').select('*').order('start_time', { ascending: true })
+        setMatches(mData || [])
 
-        const { data: matchesData } = await supabase.from('matches').select('*').order('start_time', { ascending: true })
-        setMatches(matchesData || [])
-
-        const { data: predsData } = await supabase.from('predictions').select('*').eq('user_id', user.id)
-
-        const predsMap: Record<number, { predA: string; predB: string }> = {}
-        predsData?.forEach((p: any) => {
-          predsMap[p.match_id] = { predA: p.pred_a.toString(), predB: p.pred_b.toString() }
-        })
-        setPredictions(predsMap)
-
-      } catch (err) {
-        console.error('Błąd ładowania danych:', err)
+        const { data: pData } = await supabase.from('predictions').select('*').eq('user_id', user.id)
+        const pMap: any = {}
+        pData?.forEach((p: any) => { pMap[p.match_id] = { predA: p.pred_a.toString(), predB: p.pred_b.toString() } })
+        setPredictions(pMap)
       } finally {
         setLoading(false)
       }
     }
-
     fetchData()
   }, [])
 
-  // Filtr podzielony tylko na FAZĘ GRUPOWĄ i FAZĘ PUCHAROWĄ
-  const filteredMatches = matches.filter(match => {
-    const matchDate = new Date(match.start_time).getTime()
-    const endOfGroups = new Date('2026-06-29T00:00:00Z').getTime() // Szacowana data końca fazy grupowej
-
-    if (matchPhase === 'group') return matchDate < endOfGroups
-    if (matchPhase === 'knockout') return matchDate >= endOfGroups
-    return true
-  })
-
-  const handleInputChange = (matchId: number, team: 'A' | 'B', value: string) => {
+  const handleScoreChange = (matchId: number, team: 'A' | 'B', value: string) => {
     if (value !== '' && !/^\d+$/.test(value)) return
     setPredictions(prev => ({ ...prev, [matchId]: { ...prev[matchId], [team === 'A' ? 'predA' : 'predB']: value } }))
   }
 
-  const handleSavePrediction = async (matchId: number) => {
-    const typ = predictions[matchId]
-    if (!typ || typ.predA === '' || typ.predB === '') {
-      setSaveStatus(prev => ({ ...prev, [matchId]: 'Wpisz oba wyniki!' }))
-      return
-    }
-
-    setSaveStatus(prev => ({ ...prev, [matchId]: 'Zapisywanie...' }))
-
-    try {
-      const { data: existing } = await supabase.from('predictions').select('id').eq('user_id', user.id).eq('match_id', matchId).single()
-
-      if (existing) {
-        await supabase.from('predictions').update({ pred_a: parseInt(typ.predA), pred_b: parseInt(typ.predB) }).eq('id', existing.id)
-      } else {
-        await supabase.from('predictions').insert({ user_id: user.id, match_id: matchId, pred_a: parseInt(typ.predA), pred_b: parseInt(typ.predB) })
-      }
-
-      setSaveStatus(prev => ({ ...prev, [matchId]: 'Zapisano! ✅' }))
-      setTimeout(() => setSaveStatus(prev => ({ ...prev, [matchId]: '' })), 2000)
-    } catch (err) {
-      setSaveStatus(prev => ({ ...prev, [matchId]: 'Błąd zapisu ❌' }))
+  const handleSave = async (matchId: number) => {
+    const p = predictions[matchId]
+    if (!p || p.predA === '' || p.predB === '') return
+    
+    const { data: existing } = await supabase.from('predictions').select('id').eq('user_id', user.id).eq('match_id', matchId).single()
+    if (existing) {
+      await supabase.from('predictions').update({ pred_a: parseInt(p.predA), pred_b: parseInt(p.predB) }).eq('id', existing.id)
+    } else {
+      await supabase.from('predictions').insert({ user_id: user.id, match_id: matchId, pred_a: parseInt(p.predA), pred_b: parseInt(p.predB) })
     }
   }
 
-  const handleRevealOthers = async (matchId: number) => {
-    setLoadingOthers(prev => ({ ...prev, [matchId]: true }))
-    try {
-      const { data } = await supabase.from('predictions').select('*').eq('match_id', matchId)
-      const mapped = (data || []).map(p => {
-        const userProfile = leaderboard.find(u => u.id === p.user_id)
-        return { ...p, username: userProfile?.username || 'Gracz' }
-      })
-      mapped.sort((a, b) => (b.points_earned || 0) - (a.points_earned || 0))
-      setMatchOthers(prev => ({ ...prev, [matchId]: mapped }))
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoadingOthers(prev => ({ ...prev, [matchId]: false }))
-    }
+  // Filtrowanie meczów
+  let displayMatches = matches
+  if (onlyUnpredicted) {
+    displayMatches = displayMatches.filter(m => !predictions[m.id] || predictions[m.id].predA === '' || predictions[m.id].predB === '')
   }
+  // Tu dodamy filtrowanie po grupie, gdy dodamy kolumnę do bazy
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = '/login'
-  }
+  const unpredictedCount = matches.filter(m => !predictions[m.id] || predictions[m.id].predA === '').length
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1a2332] text-white">
-        <div className="text-xl font-semibold animate-pulse text-green-500">Pobieranie najnowszych statystyk...</div>
-      </div>
-    )
-  }
-
-  // Grupy do wyrenderowania w zakładce "Tabele" (Format 2026 to 12 grup po 4 drużyny)
-  const groupNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+  if (loading) return <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center text-green-500">Ładowanie interfejsu...</div>
 
   return (
-    <div className="min-h-screen bg-[#1a2332] text-white p-2 md:p-8 font-sans pb-24 md:pb-24">
+    <div className="min-h-screen bg-[#0a0e17] text-gray-300 font-sans selection:bg-[#ccff00] selection:text-black">
       
-      {/* HEADER (Zostaje czysty i minimalistyczny na górze) */}
-      <div className="max-w-4xl mx-auto bg-[#222e43] rounded-xl p-4 md:p-6 mb-6 border border-gray-700 shadow-2xl flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="text-center sm:text-left">
-          <h1 className="text-3xl font-extrabold text-green-500 tracking-wider">TYPER 2026</h1>
-          <p className="text-gray-400 mt-1">Gracz: <span className="text-white font-bold">{profile?.username}</span></p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-center bg-[#1a2332] px-4 py-2 rounded-lg border border-gray-600">
-            <span className="block text-[10px] uppercase text-gray-400 font-bold">Twoje Punkty</span>
-            <span className="text-xl font-black text-green-400">{profile?.total_points ?? 0}</span>
-          </div>
-          <button onClick={handleLogout} className="px-3 py-2 bg-red-600/20 border border-red-600 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-all text-xs font-bold">
-            Wyloguj
+      {/* GŁÓWNY PASEK NAWIGACJI (TOP NAV) */}
+      <nav className="bg-[#111827] border-b border-gray-800 sticky top-0 z-50 flex items-center justify-between px-4 h-16 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1 min-w-max">
+          {navItems.map(item => (
+            <button 
+              key={item.name}
+              onClick={() => setActiveTab(item.name)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === item.name ? 'text-[#ccff00] border-b-2 border-[#ccff00] bg-white/5' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}
+            >
+              <span>{item.icon}</span>
+              {item.name}
+            </button>
+          ))}
+          {/* Panel Admina (czerwony) */}
+          <button className="flex items-center gap-2 px-4 py-2 ml-2 rounded-md text-sm font-bold text-[#ff0055] border border-[#ff0055]/30 hover:bg-[#ff0055]/10">
+            ⚙️ Admin
           </button>
         </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto">
-        
-        {/* --- ZAKŁADKA 1: TYPOWANIE MECZÓW --- */}
-        {activeTab === 'matches' && (
-          <>
-            {/* Prosty przełącznik: Grupowa vs Pucharowa */}
-            <div className="bg-[#222e43] p-2 rounded-xl mb-6 border border-gray-700 shadow flex flex-row gap-2 justify-center">
-              <button 
-                onClick={() => setMatchPhase('group')} 
-                className={`flex-1 px-4 py-3 text-sm font-bold rounded-lg transition-colors ${matchPhase === 'group' ? 'bg-green-600 text-white shadow' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}
-              >
-                Faza Grupowa
-              </button>
-              <button 
-                onClick={() => setMatchPhase('knockout')} 
-                className={`flex-1 px-4 py-3 text-sm font-bold rounded-lg transition-colors ${matchPhase === 'knockout' ? 'bg-green-600 text-white shadow' : 'bg-[#1a2332] text-gray-400 hover:text-white'}`}
-              >
-                Faza Pucharowa
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-5">
-              {filteredMatches.map(match => {
-                const isFinished = match.status === 'finished'
-                const hasStarted = new Date(match.start_time).getTime() <= Date.now()
-                const formattedDate = new Date(match.start_time).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-
-                let statusLabel = <span className="text-green-400 font-bold bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">⏳ Otwarte</span>
-                if (isFinished) statusLabel = <span className="text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">Zakończony</span>
-                else if (hasStarted) statusLabel = <span className="text-yellow-400 font-bold bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">⚽ W trakcie</span>
-
-                return (
-                  <div key={match.id} className="bg-[#222e43] border border-gray-700 rounded-xl p-4 shadow-lg flex flex-col justify-between hover:border-gray-600 transition-all">
-                    <div className="flex justify-between items-center text-xs text-gray-400 mb-4 bg-[#1a2332]/50 p-2 rounded">
-                      <span>📅 {formattedDate}</span>
-                      {statusLabel}
-                    </div>
-
-                    <div className="grid grid-cols-3 items-center text-center my-2">
-                      <div className="flex flex-col items-center gap-1">
-                        <TeamFlag teamName={match.team_a} />
-                        <span className="font-bold text-xs md:text-sm tracking-wide truncate w-full" title={match.team_a}>{match.team_a}</span>
-                        {hasStarted && <span className="text-xl font-black text-gray-300 mt-1">{match.score_a ?? '-'}</span>}
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="bg-[#1a2332] text-[10px] md:text-xs font-bold px-2 py-1 rounded border border-gray-700 text-green-500">VS</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <TeamFlag teamName={match.team_b} />
-                        <span className="font-bold text-xs md:text-sm tracking-wide truncate w-full" title={match.team_b}>{match.team_b}</span>
-                        {hasStarted && <span className="text-xl font-black text-gray-300 mt-1">{match.score_b ?? '-'}</span>}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-gray-700/60 flex flex-col gap-3">
-                      <div className="flex flex-row items-center justify-between gap-2">
-                        <span className="text-xs text-gray-400 font-medium">Typ:</span>
-                        <div className="flex items-center gap-2">
-                          <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={hasStarted} value={predictions[match.id]?.predA || ''} onChange={e => handleInputChange(match.id, 'A', e.target.value)} className="w-10 h-10 bg-[#1a2332] border border-gray-600 rounded text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 text-white" placeholder="-" />
-                          <span className="text-gray-500 font-bold">:</span>
-                          <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={hasStarted} value={predictions[match.id]?.predB || ''} onChange={e => handleInputChange(match.id, 'B', e.target.value)} className="w-10 h-10 bg-[#1a2332] border border-gray-600 rounded text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 text-white" placeholder="-" />
-                          {!hasStarted && <button onClick={() => handleSavePrediction(match.id)} className="ml-2 px-3 py-2 h-10 bg-green-600 hover:bg-green-500 text-white font-bold text-xs rounded shadow">Zapisz</button>}
-                        </div>
-                      </div>
-
-                      {saveStatus[match.id] && <div className="text-center text-xs text-green-400 font-semibold animate-pulse">{saveStatus[match.id]}</div>}
-
-                      {hasStarted && (
-                        <div className="mt-2 pt-3 border-t border-gray-700/40">
-                          {matchOthers[match.id] ? (
-                            <div className="space-y-1">
-                              <p className="text-[10px] uppercase text-gray-500 mb-1 font-bold">Typy innych graczy:</p>
-                              {matchOthers[match.id].map(p => (
-                                <div key={p.id} className="flex justify-between items-center bg-[#1a2332] px-2 py-1.5 rounded border border-gray-700/50">
-                                  <span className="font-semibold text-gray-300 text-xs">{p.username}</span>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-white bg-gray-800 px-1.5 py-0.5 rounded text-xs">{p.pred_a} : {p.pred_b}</span>
-                                    {p.points_earned > 0 && <span className="text-[10px] font-bold text-yellow-400">+{p.points_earned} pkt</span>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <button onClick={() => handleRevealOthers(match.id)} disabled={loadingOthers[match.id]} className="w-full py-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 rounded text-xs font-bold transition-colors">
-                              {loadingOthers[match.id] ? 'Pobieranie...' : '👁️ Odkryj typy ligi'}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-              {filteredMatches.length === 0 && (
-                <div className="text-center py-12 text-gray-500 font-medium">Brak meczów w tej fazie.</div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* --- ZAKŁADKA 2: TABELE GRUPOWE (Szkielet dla grup A-L) --- */}
-        {activeTab === 'tables' && (
-          <div className="space-y-6">
-            <div className="text-center bg-[#222e43] border border-gray-700 rounded-xl p-4 shadow-lg mb-6">
-              <h2 className="text-xl font-bold text-gray-200">Faza Grupowa MŚ 2026</h2>
-              <p className="text-xs text-gray-400 mt-1">Połączenie LIVE z API wkrótce...</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {groupNames.map(group => (
-                <div key={group} className="bg-[#222e43] border border-gray-700 rounded-xl overflow-hidden shadow-lg">
-                  <div className="bg-[#1a2332] px-4 py-2 border-b border-gray-700">
-                    <h3 className="font-bold text-green-500">Grupa {group}</h3>
-                  </div>
-                  <div className="p-0">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-[#222e43] text-gray-400 text-xs border-b border-gray-700">
-                        <tr>
-                          <th className="px-3 py-2 font-medium w-8">#</th>
-                          <th className="px-3 py-2 font-medium">Reprezentacja</th>
-                          <th className="px-3 py-2 font-medium text-center w-10">M</th>
-                          <th className="px-3 py-2 font-medium text-center w-12 text-white">Pkt</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-700/50">
-                        {[1, 2, 3, 4].map(pos => (
-                          <tr key={pos} className="hover:bg-[#1a2332] transition-colors">
-                            <td className="px-3 py-3 text-gray-500">{pos}</td>
-                            <td className="px-3 py-3 font-semibold text-gray-300">TBA</td>
-                            <td className="px-3 py-3 text-center text-gray-500">0</td>
-                            <td className="px-3 py-3 text-center font-bold text-green-400">0</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* PROFIL GRACZA (Prawy róg) */}
+        <div className="hidden md:flex items-center gap-4 ml-8 pl-4 border-l border-gray-800">
+          <div className="text-right">
+            <div className="text-white font-black text-sm">{profile?.username}</div>
+            <div className="text-[10px] text-gray-500 font-bold tracking-widest">#{profile?.id?.substring(0,4)} • {profile?.total_points || 0} PKT</div>
           </div>
-        )}
-
-        {/* --- ZAKŁADKA 3: RANKING (KLASYFIKACJA) --- */}
-        {activeTab === 'ranking' && (
-          <div className="bg-[#222e43] border border-gray-700 rounded-xl p-4 md:p-6 shadow-xl">
-            <h2 className="text-2xl font-bold mb-6 text-white text-center border-b border-gray-700 pb-4">🏆 Klasyfikacja Typerów</h2>
-            <div className="flex flex-col gap-3">
-              {leaderboard.map((player, index) => {
-                let badge = ''
-                if (index === 0) badge = '🥇'
-                else if (index === 1) badge = '🥈'
-                else if (index === 2) badge = '🥉'
-                else badge = `${index + 1}.`
-
-                return (
-                  <div key={player.id} className={`flex items-center justify-between p-4 rounded-lg border ${index === 0 ? 'bg-yellow-500/10 border-yellow-500/30' : index === 1 ? 'bg-gray-300/10 border-gray-400/30' : index === 2 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-[#1a2332] border-gray-700'}`}>
-                    <div className="flex items-center gap-4">
-                      <span className="text-2xl w-8 text-center">{badge}</span>
-                      <span className={`font-bold text-lg ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-200' : index === 2 ? 'text-orange-400' : 'text-gray-400'}`}>
-                        {player.username}
-                      </span>
-                    </div>
-                    <span className="text-2xl font-black text-green-400">{player.total_points}</span>
-                  </div>
-                )
-              })}
-              {leaderboard.length === 0 && <span className="text-center text-gray-500 mt-4">Brak graczy w bazie.</span>}
-            </div>
-          </div>
-        )}
-
-        {/* --- ZAKŁADKA 4: BONUSY --- */}
-        {activeTab === 'bonus' && (
-          <div className="bg-[#222e43] border border-gray-700 rounded-xl p-8 text-center shadow-lg">
-            <h2 className="text-3xl font-bold text-yellow-500 mb-4">🎯 Złote Strzały</h2>
-            <p className="text-gray-400 max-w-lg mx-auto mb-6">
-              Mechanika w budowie. Wytypuj Mistrza Świata, Króla Strzelców i Czarnego Konia przed startem turnieju, aby zgarnąć ogromne punkty w dniu wielkiego finału!
-            </p>
-            <div className="inline-block p-6 bg-[#1a2332] rounded-full border-4 border-dashed border-gray-600 animate-pulse">
-              <span className="text-4xl">🛠️</span>
-            </div>
-          </div>
-        )}
-
-      </div>
-
-      {/* --- DOLNA NAWIGACJA MOBILNA (BOTTOM NAV BAR) --- */}
-      <nav className="fixed bottom-0 left-0 w-full bg-[#161e2c]/95 backdrop-blur-md border-t border-gray-800 z-50">
-        <div className="max-w-4xl mx-auto flex justify-between items-center px-1 py-2">
-          
-          <button onClick={() => setActiveTab('matches')} className={`flex flex-col items-center justify-center p-2 w-1/4 transition-colors ${activeTab === 'matches' ? 'text-green-500' : 'text-gray-400 hover:text-gray-300'}`}>
-            <svg className="w-6 h-6 mb-1" fill={activeTab === 'matches' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-            </svg>
-            <span className="text-[10px] font-semibold tracking-wider">Typy</span>
-          </button>
-          
-          <button onClick={() => setActiveTab('tables')} className={`flex flex-col items-center justify-center p-2 w-1/4 transition-colors ${activeTab === 'tables' ? 'text-green-500' : 'text-gray-400 hover:text-gray-300'}`}>
-            <svg className="w-6 h-6 mb-1" fill={activeTab === 'tables' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-            <span className="text-[10px] font-semibold tracking-wider">Grupy</span>
-          </button>
-
-          <button onClick={() => setActiveTab('ranking')} className={`flex flex-col items-center justify-center p-2 w-1/4 transition-colors ${activeTab === 'ranking' ? 'text-green-500' : 'text-gray-400 hover:text-gray-300'}`}>
-            <svg className="w-6 h-6 mb-1" fill={activeTab === 'ranking' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-            <span className="text-[10px] font-semibold tracking-wider">Ranking</span>
-          </button>
-          
-          <button onClick={() => setActiveTab('bonus')} className={`flex flex-col items-center justify-center p-2 w-1/4 transition-colors ${activeTab === 'bonus' ? 'text-green-500' : 'text-gray-400 hover:text-gray-300'}`}>
-            <svg className="w-6 h-6 mb-1" fill={activeTab === 'bonus' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-            </svg>
-            <span className="text-[10px] font-semibold tracking-wider">Bonusy</span>
-          </button>
-
+          <button onClick={() => supabase.auth.signOut().then(() => window.location.href='/login')} className="text-gray-500 hover:text-white">✕</button>
         </div>
       </nav>
+
+      {/* PASEK GRUP (SUB NAV) */}
+      <div className="bg-[#111827] border-b border-gray-800 px-4 py-0 flex gap-6 overflow-x-auto no-scrollbar">
+        {groups.map(group => (
+          <button 
+            key={group}
+            onClick={() => setActiveGroup(group)}
+            className={`whitespace-nowrap py-4 text-xs font-black tracking-widest transition-colors ${activeGroup === group ? 'text-black bg-[#ccff00] px-4' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            {group}
+          </button>
+        ))}
+      </div>
+
+      <div className="max-w-7xl mx-auto p-4 md:p-6">
+        
+        {/* FILTRY */}
+        <div className="flex items-center mb-8 bg-[#111827] w-max rounded border border-gray-800 overflow-hidden">
+          <label className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-white/5 transition-colors">
+            <input 
+              type="checkbox" 
+              checked={onlyUnpredicted}
+              onChange={(e) => setOnlyUnpredicted(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-600 text-[#ccff00] focus:ring-[#ccff00] bg-[#0a0e17]" 
+            />
+            <span className="text-xs font-bold tracking-widest text-gray-400 uppercase">Tylko niewytypowane</span>
+            <span className="bg-[#ff0055] text-white text-[10px] font-black px-2 py-0.5 rounded-sm">{unpredictedCount}</span>
+          </label>
+        </div>
+
+        {/* KONTENER GRUPY I MECZÓW */}
+        <div className="mb-12">
+          {/* Nagłówek Grupy */}
+          <div className="flex items-center gap-4 mb-4 border-b border-gray-800 pb-2">
+            <h2 className="bg-[#ccff00] text-black font-black px-4 py-1 text-lg">GRUPA A</h2>
+            <span className="text-xs text-gray-500 font-bold tracking-widest">X/6 ROZEGRANE</span>
+          </div>
+
+          {/* Szkielet Tabeli zintegrowanej */}
+          <div className="bg-[#111827] border border-gray-800 mb-6 overflow-x-auto">
+            <table className="w-full text-left text-xs font-medium whitespace-nowrap">
+              <thead className="text-gray-600 border-b border-gray-800">
+                <tr>
+                  <th className="px-4 py-3 w-12">POZ</th>
+                  <th className="px-4 py-3">DRUŻYNA</th>
+                  <th className="px-2 py-3 text-center w-8">M</th>
+                  <th className="px-2 py-3 text-center w-8">W</th>
+                  <th className="px-2 py-3 text-center w-8">R</th>
+                  <th className="px-2 py-3 text-center w-8">P</th>
+                  <th className="px-2 py-3 text-center w-8">G+</th>
+                  <th className="px-2 py-3 text-center w-8">G-</th>
+                  <th className="px-2 py-3 text-center w-10">+/-</th>
+                  <th className="px-4 py-3 text-center w-12 text-gray-400">PKT</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800/50">
+                {/* Zaślepka do czasu podpięcia API */}
+                <tr className="hover:bg-white/5">
+                  <td className="px-4 py-3 text-[#ccff00] font-black">1.</td>
+                  <td className="px-4 py-3"><div className="flex items-center gap-2"><TeamFlag teamName="South Africa"/> <span className="font-bold text-white">RPA</span></div></td>
+                  <td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-2 py-3 text-center text-gray-500">0</td>
+                  <td className="px-2 py-3 text-center text-gray-500">0</td><td className="px-4 py-3 text-center text-[#ccff00] font-black text-sm">0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* LISTA MECZÓW (Design z obrazka) */}
+          <div className="flex flex-col gap-3">
+            {displayMatches.slice(0, 10).map(match => { // Pokażemy 10 dla podglądu, dopóki nie ma grup w DB
+              const isFinished = match.status === 'finished'
+              const dateObj = new Date(match.start_time)
+              const days = ['Niedz.', 'Pon.', 'Wt.', 'Śr.', 'Czw.', 'Pt.', 'Sob.']
+              const months = ['STYCZNIA', 'LUTEGO', 'MARCA', 'KWIETNIA', 'MAJA', 'CZERWCA', 'LIPCA', 'SIERPNIA', 'WRZEŚNIA', 'PAŹDZIERNIKA', 'LISTOPADA', 'GRUDNIA']
+              const dateString = `${days[dateObj.getDay()].toUpperCase()} ${dateObj.getDate()} ${months[dateObj.getMonth()]}`
+              const timeString = dateObj.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+
+              const myPred = predictions[match.id]
+              const hasPredicted = myPred && myPred.predA !== '' && myPred.predB !== ''
+
+              return (
+                <div key={match.id} className="flex flex-col md:flex-row items-center justify-between bg-[#111827] border-l-4 border-[#ff0055] hover:border-[#ccff00] transition-colors p-3 md:p-4 gap-4">
+                  
+                  {/* Data i czas */}
+                  <div className="flex flex-col w-full md:w-32 shrink-0">
+                    <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">{dateString}</span>
+                    <span className="text-xl font-black text-white">{timeString}</span>
+                  </div>
+
+                  {/* Zespoły i Wynik */}
+                  <div className="flex-1 flex justify-center items-center gap-2 md:gap-6 w-full">
+                    <TeamDisplay teamName={match.team_a} align="right" />
+                    
+                    <div className="flex items-center gap-1 md:gap-2 shrink-0">
+                      <input 
+                        type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={isFinished}
+                        value={predictions[match.id]?.predA || ''} onChange={e => handleScoreChange(match.id, 'A', e.target.value)} onBlur={() => handleSave(match.id)}
+                        className="w-10 h-12 md:w-14 md:h-14 bg-[#0a0e17] border border-gray-700 rounded-sm text-center text-xl md:text-2xl font-black text-white focus:outline-none focus:border-[#ccff00] focus:ring-1 focus:ring-[#ccff00] disabled:opacity-50" 
+                      />
+                      <span className="text-gray-600 font-black text-xl">:</span>
+                      <input 
+                        type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} disabled={isFinished}
+                        value={predictions[match.id]?.predB || ''} onChange={e => handleScoreChange(match.id, 'B', e.target.value)} onBlur={() => handleSave(match.id)}
+                        className="w-10 h-12 md:w-14 md:h-14 bg-[#0a0e17] border border-gray-700 rounded-sm text-center text-xl md:text-2xl font-black text-white focus:outline-none focus:border-[#ccff00] focus:ring-1 focus:ring-[#ccff00] disabled:opacity-50" 
+                      />
+                    </div>
+
+                    <TeamDisplay teamName={match.team_b} align="left" />
+                  </div>
+
+                  {/* Status / Punkty */}
+                  <div className="w-full md:w-24 flex justify-end shrink-0">
+                    {isFinished ? (
+                      <div className="border border-[#ff0055]/30 bg-[#ff0055]/5 text-[#ff0055] px-3 py-1 text-center font-black rounded-sm w-full md:w-auto">
+                        +0 <br/><span className="text-[8px] tracking-widest uppercase">PUDŁO</span>
+                      </div>
+                    ) : (
+                      hasPredicted ? (
+                        <div className="border border-[#ccff00]/30 text-[#ccff00] px-3 py-2 text-center font-black rounded-sm w-full md:w-auto text-[10px] tracking-widest">
+                          ZAPISANO
+                        </div>
+                      ) : (
+                        <div className="border border-gray-700 text-gray-500 px-3 py-2 text-center font-black rounded-sm w-full md:w-auto text-[10px] tracking-widest">
+                          CZEKA
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+      </div>
     </div>
   )
 }
