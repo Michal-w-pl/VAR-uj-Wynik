@@ -117,7 +117,7 @@ export default function DashboardPage() {
   // Filtr podzielony tylko na FAZĘ GRUPOWĄ i FAZĘ PUCHAROWĄ
   const filteredMatches = matches.filter(match => {
     const matchDate = new Date(match.start_time).getTime()
-    const endOfGroups = new Date('2026-06-28T00:00:00Z').getTime() // Szacowana data końca fazy grupowej
+    const endOfGroups = new Date('2026-06-29T00:00:00Z').getTime() // Szacowana data końca fazy grupowej
 
     if (matchPhase === 'group') return matchDate < endOfGroups
     if (matchPhase === 'knockout') return matchDate >= endOfGroups
