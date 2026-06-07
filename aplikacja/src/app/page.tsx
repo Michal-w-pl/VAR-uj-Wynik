@@ -115,32 +115,17 @@ export default function DashboardPage() {
     fetchData()
   }, [])
 
-  // NOWA FUNKCJA: Zarządzanie przyciskami +/-
-  const handleScoreChange = (matchId: number, team: 'A' | 'B', delta: number) => {
-    setPredictions(prev => {
-      const current = prev[matchId] || { predA: '', predB: '' }
-      const key = team === 'A' ? 'predA' : 'predB'
-      
-      let val = parseInt(current[key])
-      
-      // Jeśli pole jest puste i kliknięto "+", ustawiamy od razu na 1 (lub 0 przy "-")
-      if (isNaN(val)) {
-        val = delta > 0 ? 1 : 0
-      } else {
-        val += delta
-      }
-      
-      if (val < 0) val = 0 // W piłce nożnej nie ma ujemnych bramek :)
+  // PRZYWRÓCONE WPISYWANIE Z KLAWIATURY
+  const handleInputChange = (matchId: number, team: 'A' | 'B', value: string) => {
+    if (value !== '' && !/^\d+$/.test(value)) return
 
-      return {
-        ...prev,
-        [matchId]: {
-          ...current,
-          predA: team === 'A' ? val.toString() : (current.predA || ''),
-          predB: team === 'B' ? val.toString() : (current.predB || '')
-        }
+    setPredictions(prev => ({
+      ...prev,
+      [matchId]: {
+        ...prev[matchId],
+        [team === 'A' ? 'predA' : 'predB']: value
       }
-    })
+    }))
   }
 
   const handleSavePrediction = async (matchId: number) => {
@@ -268,43 +253,34 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* NOWY INTERFEJS TYPOWANIA: Przyciski +/- zamiast klawiatury */}
                 <div className="mt-5 pt-4 border-t border-gray-700/60 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <span className="text-xs text-gray-400 font-medium">Twój typ na mecz:</span>
                   
-                  <div className="flex items-center gap-2 md:gap-3">
-                    
-                    {/* Zespół A */}
-                    <div className="flex items-center bg-[#1a2332] border border-gray-600 rounded-lg p-1">
-                      <button 
-                        onClick={() => handleScoreChange(match.id, 'A', -1)} 
-                        disabled={isFinished} 
-                        className="w-8 h-8 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded text-white font-bold disabled:opacity-40"
-                      >-</button>
-                      <span className="w-8 text-center font-bold text-white text-lg">{predictions[match.id]?.predA || '-'}</span>
-                      <button 
-                        onClick={() => handleScoreChange(match.id, 'A', 1)} 
-                        disabled={isFinished} 
-                        className="w-8 h-8 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded text-white font-bold disabled:opacity-40"
-                      >+</button>
-                    </div>
-
+                  <div className="flex items-center gap-2">
+                    {/* Zoptymalizowane inputy wymuszające numeryczną klawiaturę na smartfonach */}
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={2}
+                      disabled={isFinished}
+                      value={predictions[match.id]?.predA || ''}
+                      onChange={e => handleInputChange(match.id, 'A', e.target.value)}
+                      className="w-12 h-10 bg-[#1a2332] border border-gray-600 rounded-lg text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+                      placeholder="-"
+                    />
                     <span className="text-gray-500 font-bold">:</span>
-
-                    {/* Zespół B */}
-                    <div className="flex items-center bg-[#1a2332] border border-gray-600 rounded-lg p-1">
-                      <button 
-                        onClick={() => handleScoreChange(match.id, 'B', -1)} 
-                        disabled={isFinished} 
-                        className="w-8 h-8 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded text-white font-bold disabled:opacity-40"
-                      >-</button>
-                      <span className="w-8 text-center font-bold text-white text-lg">{predictions[match.id]?.predB || '-'}</span>
-                      <button 
-                        onClick={() => handleScoreChange(match.id, 'B', 1)} 
-                        disabled={isFinished} 
-                        className="w-8 h-8 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded text-white font-bold disabled:opacity-40"
-                      >+</button>
-                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={2}
+                      disabled={isFinished}
+                      value={predictions[match.id]?.predB || ''}
+                      onChange={e => handleInputChange(match.id, 'B', e.target.value)}
+                      className="w-12 h-10 bg-[#1a2332] border border-gray-600 rounded-lg text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+                      placeholder="-"
+                    />
 
                     <button
                       onClick={() => handleSavePrediction(match.id)}
