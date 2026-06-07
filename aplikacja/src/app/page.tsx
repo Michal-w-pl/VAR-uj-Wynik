@@ -25,7 +25,13 @@ const TeamDisplay = ({ teamName, align = 'left' }: { teamName: string, align?: '
     'Switzerland': { code: 'ch', pl: 'Szwajcaria' }, 'Denmark': { code: 'dk', pl: 'Dania' }, 
     'Ghana': { code: 'gh', pl: 'Ghana' }, 'Cameroon': { code: 'cm', pl: 'Kamerun' }, 
     'South Africa': { code: 'za', pl: 'RPA' }, 'Czechia': { code: 'cz', pl: 'Czechy' }, 
-    'Czech Republic': { code: 'cz', pl: 'Czechy' }, 'Serbia': { code: 'rs', pl: 'Serbia' }
+    'Czech Republic': { code: 'cz', pl: 'Czechy' }, 'Serbia': { code: 'rs', pl: 'Serbia' },
+    'Bosnia-Herzegovina': { code: 'ba', pl: 'Bośnia i Herc.' }, 'New Zealand': { code: 'nz', pl: 'Nowa Zelandia' },
+    'Qatar': { code: 'qa', pl: 'Katar' }, 'Mali': { code: 'ml', pl: 'Mali' }, 'Peru': { code: 'pe', pl: 'Peru' },
+    'Panama': { code: 'pa', pl: 'Panama' }, 'Jamaica': { code: 'jm', pl: 'Jamajka' },
+    'Ivory Coast': { code: 'ci', pl: 'WKS' }, 'Venezuela': { code: 've', pl: 'Wenezuela' },
+    'Nigeria': { code: 'ng', pl: 'Nigeria' }, 'Algeria': { code: 'dz', pl: 'Algieria' },
+    'Austria': { code: 'at', pl: 'Austria' }, 'Jordan': { code: 'jo', pl: 'Jordania' }
   }
 
   const teamData = translations[normalizedName] || { code: null, pl: teamName }
@@ -68,11 +74,11 @@ export default function ProDashboard() {
   const [activeGroup, setActiveGroup] = useState('GR. A')
   const [onlyUnpredicted, setOnlyUnpredicted] = useState(false)
 
-  const groups = ['WSZYSTKIE', 'GR. A', 'GR. B', 'GR. C', 'GR. D', 'GR. E', 'GR. F', 'GR. G', 'GR. H', 'GR. I', 'GR. J', 'GR. K', 'GR. L']
+  const groupsList = ['WSZYSTKIE', 'GR. A', 'GR. B', 'GR. C', 'GR. D', 'GR. E', 'GR. F', 'GR. G', 'GR. H', 'GR. I', 'GR. J', 'GR. K', 'GR. L']
   const navItems = [
     { name: 'Start', icon: '⚽' }, { name: 'Mecze', icon: '📅' }, { name: 'Puchar', icon: '⚔️' }, 
     { name: 'Stats', icon: '📊' }, { name: 'Inni', icon: '👁️' }, { name: 'Bonus', icon: '🎁' }, 
-    { name: 'Moje typy', icon: '🎯' }, { name: 'Ranking', icon: '🏆' }, { name: 'Grupy', icon: '👥' }
+    { name: 'Moje typy', icon: '🎯' }, { name: 'Ranking', icon: '🏆' }
   ]
 
   useEffect(() => {
@@ -135,8 +141,26 @@ export default function ProDashboard() {
   const unpredictedCount = matches.filter(m => !predictions[m.id] || predictions[m.id].predA === '').length
   const myRank = leaderboard.findIndex(p => p.id === user?.id) + 1
 
-  // --- RENDERING TABELI GRUPOWEJ ---
+  // --- DYNAMICZNE DANE DLA TABEL GRUPOWYCH (Mockup przed podpięciem API) ---
+  const groupsData: Record<string, any[]> = {
+    'GR. A': [ { name: 'South Africa', w: 1, r: 1, p: 0, pts: 4 }, { name: 'Czechia', w: 1, r: 0, p: 1, pts: 3 }, { name: 'Mexico', w: 0, r: 1, p: 0, pts: 1 }, { name: 'South Korea', w: 0, r: 0, p: 1, pts: 0 } ],
+    'GR. B': [ { name: 'Canada', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Bosnia-Herzegovina', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Cameroon', w: 0, r: 0, p: 0, pts: 0 }, { name: 'New Zealand', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. C': [ { name: 'United States', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Japan', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Denmark', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Paraguay', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. D': [ { name: 'Brazil', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Morocco', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Switzerland', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Qatar', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. E': [ { name: 'Argentina', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Jordan', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Austria', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Algeria', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. F': [ { name: 'Spain', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Senegal', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ukraine', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ecuador', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. G': [ { name: 'France', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Tunisia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Mali', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Peru', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. H': [ { name: 'England', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Saudi Arabia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Colombia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Panama', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. I': [ { name: 'Portugal', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Iran', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Uruguay', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Jamaica', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. J': [ { name: 'Netherlands', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Costa Rica', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Chile', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ghana', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. K': [ { name: 'Italy', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Ivory Coast', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Serbia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Australia', w: 0, r: 0, p: 0, pts: 0 } ],
+    'GR. L': [ { name: 'Germany', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Nigeria', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Croatia', w: 0, r: 0, p: 0, pts: 0 }, { name: 'Venezuela', w: 0, r: 0, p: 0, pts: 0 } ]
+  }
+
   const renderGroupTable = (groupName: string) => {
+    const teams = groupsData[groupName]
+    if (!teams) return null
+
     return (
       <div className="bg-[#111827] border border-gray-800 mb-6 overflow-x-auto shadow-md">
         <table className="w-full text-left text-xs font-medium whitespace-nowrap">
@@ -148,61 +172,21 @@ export default function ProDashboard() {
               <th className="px-2 py-3 text-center w-8">W</th>
               <th className="px-2 py-3 text-center w-8">R</th>
               <th className="px-2 py-3 text-center w-8">P</th>
-              <th className="px-2 py-3 text-center w-8">G+</th>
-              <th className="px-2 py-3 text-center w-8">G-</th>
-              <th className="px-2 py-3 text-center w-10">+/-</th>
               <th className="px-4 py-3 text-center w-12 text-gray-400">PKT</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/50">
-            <tr className="hover:bg-white/5">
-              <td className="px-4 py-3 text-[#ccff00] font-black">1.</td>
-              <td className="px-4 py-3"><TeamDisplay teamName="South Africa" /></td>
-              <td className="px-2 py-3 text-center text-gray-500">2</td>
-              <td className="px-2 py-3 text-center text-gray-500">1</td>
-              <td className="px-2 py-3 text-center text-gray-500">1</td>
-              <td className="px-2 py-3 text-center text-gray-500">0</td>
-              <td className="px-2 py-3 text-center text-gray-500">3</td>
-              <td className="px-2 py-3 text-center text-gray-500">2</td>
-              <td className="px-2 py-3 text-center text-green-400">+1</td>
-              <td className="px-4 py-3 text-center text-[#ccff00] font-black text-sm">4</td>
-            </tr>
-            <tr className="hover:bg-white/5">
-              <td className="px-4 py-3 text-white font-black">2.</td>
-              <td className="px-4 py-3"><TeamDisplay teamName="Czechia" /></td>
-              <td className="px-2 py-3 text-center text-gray-500">2</td>
-              <td className="px-2 py-3 text-center text-gray-500">1</td>
-              <td className="px-2 py-3 text-center text-gray-500">0</td>
-              <td className="px-2 py-3 text-center text-gray-500">1</td>
-              <td className="px-2 py-3 text-center text-gray-500">2</td>
-              <td className="px-2 py-3 text-center text-gray-500">2</td>
-              <td className="px-2 py-3 text-center text-gray-500">0</td>
-              <td className="px-4 py-3 text-center text-white font-black text-sm">3</td>
-            </tr>
-            <tr className="hover:bg-white/5">
-              <td className="px-4 py-3 text-gray-500 font-black">3.</td>
-              <td className="px-4 py-3"><TeamDisplay teamName="Mexico" /></td>
-              <td className="px-2 py-3 text-center text-gray-500">1</td>
-              <td className="px-2 py-3 text-center text-gray-500">0</td>
-              <td className="px-2 py-3 text-center text-gray-500">1</td>
-              <td className="px-2 py-3 text-center text-gray-500">0</td>
-              <td className="px-2 py-3 text-center text-gray-500">2</td>
-              <td className="px-2 py-3 text-center text-gray-500">2</td>
-              <td className="px-2 py-3 text-center text-gray-500">0</td>
-              <td className="px-4 py-3 text-center text-gray-400 font-black text-sm">1</td>
-            </tr>
-            <tr className="hover:bg-white/5">
-              <td className="px-4 py-3 text-gray-500 font-black">4.</td>
-              <td className="px-4 py-3"><TeamDisplay teamName="South Korea" /></td>
-              <td className="px-2 py-3 text-center text-gray-500">1</td>
-              <td className="px-2 py-3 text-center text-gray-500">0</td>
-              <td className="px-2 py-3 text-center text-gray-500">0</td>
-              <td className="px-2 py-3 text-center text-gray-500">1</td>
-              <td className="px-2 py-3 text-center text-gray-500">1</td>
-              <td className="px-2 py-3 text-center text-gray-500">2</td>
-              <td className="px-2 py-3 text-center text-red-500">-1</td>
-              <td className="px-4 py-3 text-center text-gray-500 font-black text-sm">0</td>
-            </tr>
+            {teams.map((team, idx) => (
+              <tr key={team.name} className="hover:bg-white/5">
+                <td className={`px-4 py-3 font-black ${idx === 0 ? 'text-[#ccff00]' : idx === 1 ? 'text-white' : 'text-gray-500'}`}>{idx + 1}.</td>
+                <td className="px-4 py-3"><TeamDisplay teamName={team.name} /></td>
+                <td className="px-2 py-3 text-center text-gray-500">{team.w + team.r + team.p}</td>
+                <td className="px-2 py-3 text-center text-gray-500">{team.w}</td>
+                <td className="px-2 py-3 text-center text-gray-500">{team.r}</td>
+                <td className="px-2 py-3 text-center text-gray-500">{team.p}</td>
+                <td className={`px-4 py-3 text-center font-black text-sm ${idx === 0 ? 'text-[#ccff00]' : idx === 1 ? 'text-white' : 'text-gray-400'}`}>{team.pts}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -215,7 +199,7 @@ export default function ProDashboard() {
     
     return (
       <div className="flex flex-col gap-3">
-        {matchList.slice(0, 15).map(match => { // Wyświetlamy partiami dla wydajności interfejsu
+        {matchList.slice(0, 15).map(match => { // Wyświetlamy partiami dla wydajności
           const isFinished = match.status === 'finished'
           const dateObj = new Date(match.start_time)
           const days = ['Niedz.', 'Pon.', 'Wt.', 'Śr.', 'Czw.', 'Pt.', 'Sob.']
@@ -241,7 +225,7 @@ export default function ProDashboard() {
               <div className="w-full md:w-24 flex justify-end shrink-0">
                 {isFinished ? (
                   <div className="border border-[#ff0055]/30 bg-[#ff0055]/5 text-[#ff0055] px-3 py-1 text-center font-black rounded-sm w-full md:w-auto text-xs">
-                    +0 PUDŁO
+                    ZAKOŃCZONY
                   </div>
                 ) : predictions[match.id]?.predA ? (
                   <div className="border border-[#ccff00]/30 text-[#ccff00] px-3 py-2 text-center font-black rounded-sm w-full md:w-auto text-[10px] tracking-widest bg-[#ccff00]/5">
@@ -265,15 +249,10 @@ export default function ProDashboard() {
   return (
     <div className="min-h-screen bg-[#0a0e17] text-gray-300 font-sans selection:bg-[#ccff00] selection:text-black">
       
-      {/* GŁÓWNA NAWIGACJA (TOP BAR) */}
       <nav className="bg-[#111827] border-b border-gray-800 sticky top-0 z-50 flex items-center justify-between px-4 h-16 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-1 min-w-max">
           {navItems.map(item => (
-            <button 
-              key={item.name}
-              onClick={() => setActiveTab(item.name)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === item.name ? 'text-[#ccff00] border-b-2 border-[#ccff00] bg-white/5' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}
-            >
+            <button key={item.name} onClick={() => setActiveTab(item.name)} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === item.name ? 'text-[#ccff00] border-b-2 border-[#ccff00] bg-white/5' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}>
               {item.name}
             </button>
           ))}
@@ -287,59 +266,41 @@ export default function ProDashboard() {
         </div>
       </nav>
 
-      {/* PASEK GRUP (SUB BAR) - Pojawia się bezpośrednio tam, gdzie zarządzamy meczami */}
-      {['Mecze', 'Grupy', 'Moje typy'].includes(activeTab) && (
+      {['Mecze', 'Moje typy'].includes(activeTab) && (
         <div className="bg-[#111827] border-b border-gray-800 px-4 py-0 flex gap-6 overflow-x-auto no-scrollbar">
-          {groups.map(group => (
-            <button 
-              key={group}
-              onClick={() => setActiveGroup(group)}
-              className={`whitespace-nowrap py-4 text-xs font-black tracking-widest transition-colors ${activeGroup === group ? 'text-black bg-[#ccff00] px-4' : 'text-gray-500 hover:text-gray-300'}`}
-            >
+          {groupsList.map(group => (
+            <button key={group} onClick={() => setActiveGroup(group)} className={`whitespace-nowrap py-4 text-xs font-black tracking-widest transition-colors ${activeGroup === group ? 'text-black bg-[#ccff00] px-4' : 'text-gray-500 hover:text-gray-300'}`}>
               {group}
             </button>
           ))}
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto p-4 md:p-6">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 animate-fade-in">
         
-        {/* =========================================
-            ZAKŁADKA: MECZE (TYPOWANIE + TABELA)
-            ========================================= */}
         {activeTab === 'Mecze' && (
-          <div className="animate-fade-in">
-            
-            {/* Pole wyboru filtrów */}
-            <div className="flex items-center mb-8 bg-[#111827] w-max rounded border border-gray-800 overflow-hidden">
-              <label className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-white/5 transition-colors">
-                <input type="checkbox" checked={onlyUnpredicted} onChange={(e) => setOnlyUnpredicted(e.target.checked)} className="w-4 h-4 rounded border-gray-600 text-[#ccff00] focus:ring-[#ccff00] bg-[#0a0e17]" />
+          <div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+              <div className="flex items-center gap-4 border-b border-gray-800 pb-2 w-full sm:w-auto">
+                <h2 className="bg-[#ccff00] text-black font-black px-4 py-1 text-lg uppercase">
+                  {activeGroup === 'WSZYSTKIE' ? 'FAZA GRUPOWA' : activeGroup}
+                </h2>
+              </div>
+              <label className="flex items-center gap-3 px-4 py-2 bg-[#111827] rounded border border-gray-800 cursor-pointer hover:bg-white/5 transition-colors w-full sm:w-auto">
+                <input type="checkbox" checked={onlyUnpredicted} onChange={(e) => setOnlyUnpredicted(e.target.checked)} className="w-4 h-4 text-[#ccff00] bg-[#0a0e17] border-gray-600 rounded" />
                 <span className="text-xs font-bold tracking-widest text-gray-400 uppercase">Tylko niewytypowane</span>
                 <span className="bg-[#ff0055] text-white text-[10px] font-black px-2 py-0.5 rounded-sm">{unpredictedCount}</span>
               </label>
             </div>
 
-            {/* Nagłówek aktywnej grupy */}
-            <div className="flex items-center gap-4 mb-4 border-b border-gray-800 pb-2">
-              <h2 className="bg-[#ccff00] text-black font-black px-4 py-1 text-lg">
-                {activeGroup === 'WSZYSTKIE' ? 'FAZA GRUPOWA' : activeGroup}
-              </h2>
-              <span className="text-xs text-gray-500 font-bold tracking-widest">3/6 ROZEGRANE</span>
-            </div>
-
-            {/* ZINTEGROWANA TABELA: Wyświetla się automatycznie nad meczami danej grupy */}
             {activeGroup !== 'WSZYSTKIE' && renderGroupTable(activeGroup)}
-
-            {/* Lista spotkań pod tabelą */}
             {renderMatchList(displayMatches)}
           </div>
         )}
 
-        {/* =========================================
-            ZAKŁADKA: RANKING LIGI
-            ========================================= */}
+        {/* INNE ZAKŁADKI (RANKING ITD.) POZOSTAJĄ BEZ ZMIAN */}
         {activeTab === 'Ranking' && (
-          <div className="animate-fade-in max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-widest border-l-4 border-[#ccff00] pl-4">Klasyfikacja Typerów</h2>
             <div className="flex flex-col gap-3">
               {leaderboard.map((player, index) => (
@@ -355,14 +316,12 @@ export default function ProDashboard() {
           </div>
         )}
 
-        {/* =========================================
-            POZOSTAŁE ZAKŁADKI (W BUDOWIE)
-            ========================================= */}
+        {/* PLACEHOLDER DLA RESZTY */}
         {!['Mecze', 'Ranking'].includes(activeTab) && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <span className="text-6xl mb-4">🚧</span>
             <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-widest">Moduł w przygotowaniu</h2>
-            <p className="text-gray-500 max-w-md">Zakładka <span className="text-[#ccff00]">{activeTab}</span> zostanie zasilona danymi wkrótce.</p>
+            <p className="text-gray-500 max-w-md">Zakładka <span className="text-[#ccff00]">{activeTab}</span> w budowie.</p>
           </div>
         )}
 
